@@ -13,6 +13,7 @@ void loop() {
   if (currentMillis - previousMillis >= interval){
     previousMillis = currentMillis;
     Serial.println(" En sekund har gått");
+    Serial.print("ndnfn")
   }
   // put your main code here, to run repeatedly:
 
