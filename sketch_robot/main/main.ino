@@ -1,113 +1,223 @@
 #include <NewPing.h>
 #include "CytronMotorDriver.h"
+#include <ArduinoSTL.h> // Include the ArduinoSTL library
+#include <stack>        // Include stack header
+#include <utility>      // Include utility header for std::pair
 
-// Ultrasonic sensor pins
-#define FRONT_TRIGGER_PIN  12
-#define FRONT_ECHO_PIN     11
-#define RIGHT_TRIGGER_PIN  8
-#define RIGHT_ECHO_PIN     7
-#define LEFT_TRIGGER_PIN   4
-#define LEFT_ECHO_PIN      2
-#define MAX_DISTANCE       200
+// Line sensor pins
+#define LINE_SENSOR_LEFT A0
+#define LINE_SENSOR_MIDDLE A1
+#define LINE_SENSOR_RIGHT A2
 
+// Distance sensor pins
+#define FRONT_TRIGGER_PIN 12
+#define FRONT_ECHO_PIN 11
+#define RIGHT_TRIGGER_PIN 8
+#define RIGHT_ECHO_PIN 7
+#define LEFT_TRIGGER_PIN 4
+#define LEFT_ECHO_PIN 2
+#define MAX_DISTANCE 200
+
+// Motor configuration
+CytronMD motorLeft(PWM_PWM, 3, 9);
+CytronMD motorRight(PWM_PWM, 10, 11);
+
+// Ultrasonic sensors
 NewPing sonarFront(FRONT_TRIGGER_PIN, FRONT_ECHO_PIN, MAX_DISTANCE);
 NewPing sonarRight(RIGHT_TRIGGER_PIN, RIGHT_ECHO_PIN, MAX_DISTANCE);
 NewPing sonarLeft(LEFT_TRIGGER_PIN, LEFT_ECHO_PIN, MAX_DISTANCE);
 
-// Motor configuration using CytronMotorDriver library
-CytronMD motorLeft(PWM_PWM, 3, 9);   // PWM 1A = Pin 3, PWM 1B = Pin 9 (Left motor)
-CytronMD motorRight(PWM_PWM, 10, 11); // PWM 2A = Pin 10, PWM 2B = Pin 11 (Right motor)
+// Maze state
+const int GRID_SIZE = 10;
+int grid[GRID_SIZE][GRID_SIZE] = {0};  // 0 = Unvisited, 1 = Visited, 2 = Cylinder
+int currentX = 0, currentY = 0;
+std::stack<std::pair<int, int>> dfsStack;
+int rescuedCylinders = 0;
 
-// Movement modes
-enum MovementMode { FORWARD, TURN_LEFT, TURN_RIGHT, TURN_AROUND, STOP };
-MovementMode currentMode = FORWARD;
 
+// Line-following thresholds
+const int LINE_THRESHOLD = 500; // to be changed
+
+// Movement and navigation modes
+enum MovementMode { LINE_FOLLOWING, FORWARD, TURN_LEFT, TURN_RIGHT, TURN_AROUND, WALL_FOLLOWING, STOP };
+MovementMode currentMode = LINE_FOLLOWING;
+
+// Setup
 void setup() {
   Serial.begin(9600);
+  Serial.println("Robot Initialized");
+  grid[currentX][currentY] = 1;  // Mark the starting position as visited
+  dfsStack.push({currentX, currentY});  // Start DFS
 }
 
+// Main loop
 void loop() {
-  // Read distances from the ultrasonic sensors
+  // Step 1: Read sensors
+  int lineLeft = analogRead(LINE_SENSOR_LEFT);
+  int lineMiddle = analogRead(LINE_SENSOR_MIDDLE);
+  int lineRight = analogRead(LINE_SENSOR_RIGHT);
+
   int distanceFront = sonarFront.ping_cm();
   int distanceRight = sonarRight.ping_cm();
   int distanceLeft = sonarLeft.ping_cm();
 
-  Serial.print("Front: ");
-  Serial.print(distanceFront);
-  Serial.print(" cm, Right: ");
-  Serial.print(distanceRight);
-  Serial.print(" cm, Left: ");
-  Serial.println(distanceLeft);
-  Serial.println(" cm");
+  // Debugging
+  Serial.print("Line Sensors - Left: ");
+  Serial.print(lineLeft);
+  Serial.print(" Middle: ");
+  Serial.print(lineMiddle);
+  Serial.print(" Right: ");
+  Serial.println(lineRight);
 
-  // Decision-making based on sensor readings
-  if (distanceFront > 0 && distanceFront < 30) {
-    if (distanceRight > 0 && distanceRight < 30 && distanceLeft > 0 && distanceLeft < 30) {
-      // Obstacles in all three directions
-      setMovementMode(TURN_AROUND);
-    } else if (distanceRight > 0 && distanceRight < 30) {
-      // Obstacle in front and on the right
-      setMovementMode(TURN_LEFT);
-    } else if (distanceLeft > 0 && distanceLeft < 30) {
-      // Obstacle in front and on the left
-      setMovementMode(TURN_RIGHT);
-    } else {
-      // Obstacle in front only
-      setMovementMode(TURN_LEFT);
-    }
-  } else {
-    // No obstacle in front
-    setMovementMode(FORWARD);
+  Serial.print("Distances - Front: ");
+  Serial.print(distanceFront);
+  Serial.print(" Right: ");
+  Serial.print(distanceRight);
+  Serial.print(" Left: ");
+  Serial.println(distanceLeft);
+
+  // Step 2: Cylinder detection and rescue
+  if (detectCylinder()) {
+    rescueCylinder();
+    return;
+  }
+  
+  if (rescuedCylinders == 3) {
+    exitMaze();  // Switch to A* for exit
   }
 
-  // Execute movement based on the current mode
-  switch (currentMode) {
-    case FORWARD:
+  // Step 3: Line-Following Logic
+  if (lineDetected(lineLeft, lineMiddle, lineRight)) {
+    currentMode = LINE_FOLLOWING;
+    followLine(lineLeft, lineMiddle, lineRight);
+    return;  // Skip other logic if the line is detected
+  }
+
+  // Step 4: Fallback to DFS if no line detected
+  if (!dfsStack.empty()) {
+    std::pair<int, int> currentNode = dfsStack.top();
+    int x = currentNode.first;
+    int y = currentNode.second;
+
+    if (distanceFront > 30 && isUnvisited(x + 1, y)) {
       moveForward();
-      break;
-    case TURN_LEFT:
-      turnLeft();
-      break;
-    case TURN_RIGHT:
+      currentX++;
+      markVisited(currentX, currentY);
+      dfsStack.push({currentX, currentY});
+    } else if (distanceRight > 30 && isUnvisited(x, y + 1)) {
       turnRight();
-      break;
-    case TURN_AROUND:
-      turnAround();
-      break;
-    case STOP:
-      stopMotors();
-      break;
+      currentY++;
+      markVisited(currentX, currentY);
+      dfsStack.push({currentX, currentY});
+    } else if (distanceLeft > 30 && isUnvisited(x, y - 1)) {
+      turnLeft();
+      currentY--;
+      markVisited(currentX, currentY);
+      dfsStack.push({currentX, currentY});
+    } else {
+      dfsStack.pop();  // Dead end, backtrack
+      backtrack(currentNode);
+    }
+  }  else {
+    stopMotors();
   }
 }
 
-// Movement functions using CytronMotorDriver library
+// Line-following logic
+void followLine(int lineLeft, int lineMiddle, int lineRight) {
+  if (lineMiddle > LINE_THRESHOLD) {  // Robot is centered
+    moveForward();
+  } else if (lineLeft > LINE_THRESHOLD) {  // Adjust to the left
+    motorLeft.setSpeed(100);
+    motorRight.setSpeed(150);
+  } else if (lineRight > LINE_THRESHOLD) {  // Adjust to the right
+    motorLeft.setSpeed(150);
+    motorRight.setSpeed(100);
+  } else {
+    stopMotors();  // Lost the line
+  }
+}
+
+bool lineDetected(int lineLeft, int lineMiddle, int lineRight) {
+  return (lineLeft > LINE_THRESHOLD || lineMiddle > LINE_THRESHOLD || lineRight > LINE_THRESHOLD);
+}
+
+// Wall-following logic
+void wallFollow(int distanceRight) {
+  if (distanceRight < 20) {  // Too close to wall, move left
+    motorLeft.setSpeed(100);
+    motorRight.setSpeed(150);
+  } else if (distanceRight > 30) {  // Too far from wall, move right
+    motorLeft.setSpeed(150);
+    motorRight.setSpeed(100);
+  } else {  // Perfect distance, move forward
+    moveForward();
+  }
+}
+
+// Rescue logic
+bool detectCylinder() {
+  int objectDistance = sonarFront.ping_cm();
+  return (objectDistance > 0 && objectDistance < 10);
+}
+
+void rescueCylinder() {
+  stopMotors();
+  delay(1000);
+  grid[currentX][currentY] = 2;
+  rescuedCylinders++;
+  Serial.print("Cylinder rescued! Total rescued: ");
+  Serial.println(rescuedCylinders);
+}
+
+bool isUnvisited(int x, int y) {
+  return (x >= 0 && x < GRID_SIZE && y >= 0 && y < GRID_SIZE && grid[x][y] == 0);
+}
+
+void markVisited(int x, int y) {
+  grid[x][y] = 1;
+}
+
+// Movement functions
 void moveForward() {
-  motorLeft.setSpeed(150);   // Move left motor forward at medium speed
-  motorRight.setSpeed(150);  // Move right motor forward at medium speed
+  motorLeft.setSpeed(150);
+  motorRight.setSpeed(150);
 }
 
 void turnLeft() {
-  motorLeft.setSpeed(-100);  // Move left motor backward at low speed
-  motorRight.setSpeed(100);  // Move right motor forward at low speed
+  motorLeft.setSpeed(-100);
+  motorRight.setSpeed(100);
+  delay(500);
 }
 
 void turnRight() {
-  motorLeft.setSpeed(100);   // Move left motor forward at low speed
-  motorRight.setSpeed(-100); // Move right motor backward at low speed
+  motorLeft.setSpeed(100);
+  motorRight.setSpeed(-100);
+  delay(500);
 }
 
 void turnAround() {
-  motorLeft.setSpeed(-150);  // Move left motor backward at medium speed
-  motorRight.setSpeed(150);  // Move right motor forward at medium speed
-  delay(1000);               // Turn for 1 second (adjust as needed)
+  motorLeft.setSpeed(-150);
+  motorRight.setSpeed(150);
+  delay(1000);
 }
 
 void stopMotors() {
-  motorLeft.setSpeed(0);     // Stop left motor
-  motorRight.setSpeed(0);    // Stop right motor
+  motorLeft.setSpeed(0);
+  motorRight.setSpeed(0);
 }
 
-// Function to change the movement mode
-void setMovementMode(MovementMode mode) {
-  currentMode = mode;
+void backtrack(std::pair<int, int> previousNode) {
+  // Logic to navigate back to the previous node (e.g., reverse movements)
+}
+
+void exitMaze() {
+  // Implement A* for shortest path to the exit
+  //std::priority_queue<std::pair<int, std::pair<int, int>>> pq;  // Min-heap for A*
+  //pq.push({0, {currentX, currentY}});
+
+  // Example A* algorithm implementation
+  //while (!pq.empty()) {
+    // A* logic here
+  //}
 }
