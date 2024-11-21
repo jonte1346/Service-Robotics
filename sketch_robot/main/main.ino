@@ -4,11 +4,6 @@
 #include <stack>        // Include stack header
 #include <utility>      // Include utility header for std::pair
 
-// Line sensor pins
-#define LINE_SENSOR_LEFT A0
-#define LINE_SENSOR_MIDDLE A1
-#define LINE_SENSOR_RIGHT A2
-
 // Distance sensor pins
 #define FRONT_TRIGGER_PIN 12
 #define FRONT_ECHO_PIN 11
@@ -17,6 +12,24 @@
 #define LEFT_TRIGGER_PIN 4
 #define LEFT_ECHO_PIN 2
 #define MAX_DISTANCE 200
+
+//Line following sensors
+#define LINE_SENSOR_LEFT A0
+#define LINE_SENSOR_MIDDLE1 A1
+#define LINE_SENSOR_MIDDLE2 A2
+#define LINE_SENSOR_MIDDLE3 A3
+#define LINE_SENSOR_MIDDLE4 A4
+#define LINE_SENSOR_RIGHT A5
+
+//States
+enum States {INIT, GET_NEXT_GOAL, MOVE_TO_GOAL, LOOK_FOR_PERSON, PICKUP_PERSON, MOVE_TO_BASE, DONE};
+
+// Orientation
+enum Orientation {NORTH = 0, EAST = 1, SOUTH = 2, WEST = 3};
+
+// Movement and navigation modes
+enum MovementMode { LINE_FOLLOWING, FORWARD, TURN_LEFT, TURN_RIGHT, TURN_AROUND, WALL_FOLLOWING, STOP };
+MovementMode currentMode = LINE_FOLLOWING;
 
 // Motor configuration
 CytronMD motorLeft(PWM_PWM, 3, 9);
@@ -27,20 +40,36 @@ NewPing sonarFront(FRONT_TRIGGER_PIN, FRONT_ECHO_PIN, MAX_DISTANCE);
 NewPing sonarRight(RIGHT_TRIGGER_PIN, RIGHT_ECHO_PIN, MAX_DISTANCE);
 NewPing sonarLeft(LEFT_TRIGGER_PIN, LEFT_ECHO_PIN, MAX_DISTANCE);
 
-// Maze state
-const int GRID_SIZE = 10;
-int grid[GRID_SIZE][GRID_SIZE] = {0};  // 0 = Unvisited, 1 = Visited, 2 = Cylinder
-int currentX = 0, currentY = 0;
-std::stack<std::pair<int, int>> dfsStack;
-int rescuedCylinders = 0;
-
-
 // Line-following thresholds
 const int LINE_THRESHOLD = 500; // to be changed
 
-// Movement and navigation modes
-enum MovementMode { LINE_FOLLOWING, FORWARD, TURN_LEFT, TURN_RIGHT, TURN_AROUND, WALL_FOLLOWING, STOP };
-MovementMode currentMode = LINE_FOLLOWING;
+// Maze starting state
+const int GRID_SIZE = 7;
+int grid[GRID_SIZE][GRID_SIZE] = {0};  // 0 = Unvisited, 1 = Visited, 2 = Cylinder
+int currentX = 0, currentY = 3;
+int orientation = WEST;
+std::stack<std::pair<int, int>> dfsStack;
+int rescuedCylinders = 0;
+
+// Maze representation
+const int maze[15][15] = {
+    {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+    {1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1},
+    {1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1},
+    {1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1},
+    {1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1},
+    {1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1},
+    {1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1},
+    {1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+    {1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1},
+    {1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+    {1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1},
+    {1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1},
+    {1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1},
+    {1, 0, 0, 0, 1, 0, 0, 2, 1, 0, 0, 0, 0, 0, 1},
+    {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+};
+
 
 // Setup
 void setup() {
