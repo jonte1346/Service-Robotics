@@ -18,7 +18,7 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
   if(Serial.find("s")) {
-    servoOutput9.write(80);
+    servoOutput9.write(90);
     delay(500);
     for(pos = 0; pos <= topPos ; pos += 1) {
       servoOutput10.write(pos);  
