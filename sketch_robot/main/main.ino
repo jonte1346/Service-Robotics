@@ -1,7 +1,6 @@
 #include <NewPing.h>
 #include "CytronMotorDriver.h"
 #include <ArduinoSTL.h> // Include the ArduinoSTL library
-#include <stack>        // Include stack header
 #include <utility>      // Include utility header for std::pair
 #include <QTRSensors.h>
 
@@ -40,14 +39,19 @@ enum LineType { STRAIGHT, LEFT_TURN, RIGHT_TURN, INTERSECTION, NONE };
 #define DEAD_END -2   // Dead end in this direction
 #define START -3
 
-// Define a structure for a Node
+// Define a Path struct to represent each direction's attributes
+struct Path {
+    int neighborID;  // ID of the adjacent node, DEAD_END, or NULL_EDGE
+    bool traversed;  // Indicates if the path has been traversed
+};
+
+// Define the Node structure
 struct Node {
     int id;          // Unique ID for the node
-    bool visited;    // check to see if a node is visited or not
-    int north;       // ID of the node to the north, DEAD_END, or NULL_EDGE
-    int south;       // ID of the node to the south, DEAD_END, or NULL_EDGE
-    int east;        // ID of the node to the east, DEAD_END, or NULL_EDGE
-    int west;        // ID of the node to the west, DEAD_END, or NULL_EDGE
+    Path north;      // Path to the north
+    Path south;      // Path to the south
+    Path east;       // Path to the east
+    Path west;       // Path to the west
 };
 
 // Array to hold all nodes in the maze
@@ -55,8 +59,8 @@ struct Node {
 Node nodes[NUM_NODES];
 
 // Motor configuration
-CytronMD motorLeft(PWM_PWM, 3, 9);
-CytronMD motorRight(PWM_PWM, 10, 11);
+CytronMD motorLeft(PWM_PWM, 3, 5);
+CytronMD motorRight(PWM_PWM, 6, 13);
 
 // Ultrasonic sensors
 NewPing sonarFront(FRONT_TRIGGER_PIN, FRONT_ECHO_PIN, MAX_DISTANCE);
@@ -74,24 +78,24 @@ Orientation currentOrientation;
 void setup() {
   //id, north, south, east, west
 // Define nodes and their connections (IDs, DEAD_END, or NULL_EDGE)
-  nodes[0] = {0, false, NULL_EDGE, START, 2, 1};  // Start/Exit node
-  nodes[1] = {1, false, 4, DEAD_END, 0, 3};
-  nodes[2] = {2, false, NULL_EDGE, 0, 5, DEAD_END};
-  nodes[3] = {3, false, DEAD_END, 4, NULL_EDGE, 1};
-  nodes[4] = {4, false, 3, 9, NULL_EDGE, 1};
-  nodes[5] = {5, false, NULL_EDGE, 6, 7, 2};
-  nodes[6] = {6, false, 5, 7, DEAD_END, NULL_EDGE};
-  nodes[7] = {7, false, 8, 6, NULL_EDGE, 5};
-  nodes[8] = {8, false, DEAD_END, NULL_EDGE, 7, 9};
-  nodes[9] = {9, false, 10, NULL_EDGE, 8, 4};
-  nodes[10] = {10, false, DEAD_END, 9, NULL_EDGE, DEAD_END};
+  nodes[0] = {0, {NULL_EDGE, false}, {START, true}, {2, false}, {1, false}};  // Start/Exit node
+  nodes[1] = {1, {4, false}, {DEAD_END, false}, {0, false}, {3, false}};
+  nodes[2] = {2, {NULL_EDGE, false}, {0, false}, {5, false}, {DEAD_END, false}};
+  nodes[3] = {3, {DEAD_END, false}, {4, false}, {NULL_EDGE, false}, {1, false}};
+  nodes[4] = {4, {3, false}, {9, false}, {NULL_EDGE, false}, {1, false}};
+  nodes[5] = {5, {NULL_EDGE, false}, {6, false}, {7, false}, {2, false}};
+  nodes[6] = {6, {5, false}, {7, false}, {DEAD_END, false}, {NULL_EDGE, false}};
+  nodes[7] = {7, {8, false}, {6, false}, {NULL_EDGE, false}, {5, false}};
+  nodes[8] = {8, {DEAD_END, false}, {NULL_EDGE, false}, {7, false}, {9, false}};
+  nodes[9] = {9, {10, false}, {NULL_EDGE, false}, {8, false}, {4, false}};
+  nodes[10] = {10, {DEAD_END, false}, {9, false}, {NULL_EDGE, false}, {DEAD_END, false}};
 
   currentNodeID = 0;  // Start at nodes[0]
   currentOrientation = WEST;
 
   // configure the sensors
   qtr.setTypeAnalog();
-  qtr.setSensorPins((const uint8_t[]){A0, A1, A2, A3, A4}, SensorCount);
+  qtr.setSensorPins((const uint8_t[]){A0, A1, A2, A3, A4, A5}, SensorCount);
 
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, HIGH); // turn on Arduino's LED to indicate we are in calibration mode
@@ -135,7 +139,7 @@ void loop() {
   Serial.println(distanceLeft);
 
   // Step 2: Cylinder detection and rescue
-  if (detectCylinder()) {
+  if (detectCylinder() && lineType != NONE) {
     rescueCylinder();
     return;
   }
@@ -163,7 +167,8 @@ void loop() {
       break;
 
     case NONE:
-      stopMotors(); // Lost the line
+      // Lost the line
+      handleNoLine(distanceFront, distanceRight, distanceLeft);
       break;
   }
 
@@ -216,53 +221,55 @@ void followLine(uint16_t position) {
 }
 
 void handleIntersection() {
-  stopMotors();
-  delay(500);
 
   // Choose a path based on DFS
   Serial.print("Visiting Node ");
-        Serial.println(currentNodeID);
+  Serial.println(currentNodeID);
 
-        // Mark the current node as visited
-        nodes[currentNodeID].visited = true;
+  setPathTrue(); // set the path we came from to traversed = true
+  
+    // Explore untraversed paths, regardless of whether the neighbor node is visited
+    if (!nodes[currentNodeID].north.traversed && nodes[currentNodeID].north.neighborID != NULL_EDGE) {
+        Serial.println("Moving North");
+        nodes[currentNodeID].north.traversed = true;  // Mark the path as traversed
+        currentNodeID = nodes[currentNodeID].north.neighborID;
+        handleTurn(NORTH);
+    } else if (!nodes[currentNodeID].south.traversed && nodes[currentNodeID].south.neighborID != NULL_EDGE) {
+        Serial.println("Moving South");
+        nodes[currentNodeID].south.traversed = true;  // Mark the path as traversed
+        currentNodeID = nodes[currentNodeID].south.neighborID;
+        handleTurn(SOUTH);
+    } else if (!nodes[currentNodeID].east.traversed && nodes[currentNodeID].east.neighborID != NULL_EDGE) {
+        Serial.println("Moving East");
+        nodes[currentNodeID].east.traversed = true;  // Mark the path as traversed
+        currentNodeID = nodes[currentNodeID].east.neighborID;
+        handleTurn(EAST);
+    } else if (!nodes[currentNodeID].west.traversed && nodes[currentNodeID].west.neighborID != NULL_EDGE) {
+        Serial.println("Moving West");
+        nodes[currentNodeID].west.traversed = true;  // Mark the path as traversed
+        currentNodeID = nodes[currentNodeID].west.neighborID;
+        handleTurn(WEST);
+    } else {
+        // No untraversed paths, backtrack or terminate
+        Serial.println("No untraversed paths, stopping traversal.");
+    }
+}
 
-        // Check adjacent nodes
-        if (isUnvisited(nodes[currentNodeID].north)) {
-            Serial.println("Moving North");
-            if (nodes[currentNodeID].north == DEAD_END){
-              nodes[currentNodeID].north = NULL_EDGE;
-            } else {
-            currentNodeID = nodes[currentNodeID].north;
-            }
-            handleTurn(NORTH);
-        } else if (isUnvisited(nodes[currentNodeID].south)) {
-            Serial.println("Moving South");
-            if (nodes[currentNodeID].south == DEAD_END){
-              nodes[currentNodeID].south = NULL_EDGE;
-            } else {
-            currentNodeID = nodes[currentNodeID].south;
-            }
-            handleTurn(SOUTH);
-        } else if (isUnvisited(nodes[currentNodeID].east)) {
-            Serial.println("Moving East");
-            if (nodes[currentNodeID].east == DEAD_END){
-              nodes[currentNodeID].east = NULL_EDGE;
-            } else {
-            currentNodeID = nodes[currentNodeID].east;
-            }
-            handleTurn(EAST);
-        } else if (isUnvisited(nodes[currentNodeID].west)) {
-            Serial.println("Moving West");
-            if (nodes[currentNodeID].west == DEAD_END){
-              nodes[currentNodeID].west = NULL_EDGE;
-            } else {
-            currentNodeID = nodes[currentNodeID].west;
-            }
-            handleTurn(WEST);
-        } else {
-            // No unvisited neighbors, backtrack or terminate
-            Serial.println("No unvisited neighbors, stopping traversal.");
-        }
+void setPathTrue(){
+  switch(currentOrientation){
+    case NORTH:
+      nodes[currentNodeID].north.traversed = true;
+      break;
+    case EAST:
+      nodes[currentNodeID].east.traversed = true;
+      break;
+    case SOUTH:
+      nodes[currentNodeID].south.traversed = true;
+      break;
+    case WEST:
+      nodes[currentNodeID].west.traversed = true;
+      break;
+  } 
 }
 
 
@@ -278,13 +285,6 @@ void rescueCylinder() {
   rescuedCylinders++;
   Serial.print("Cylinder rescued! Total rescued: ");
   Serial.println(rescuedCylinders);
-}
-
-// Helper function to check if a node is unvisited
-bool isUnvisited(int nodeID) {
-    if (nodeID == NULL_EDGE) return false;  // Skip invalid edges
-    if (nodeID == DEAD_END) return true; // check out dead ends and then call them NULL_EDGE
-    return !nodes[nodeID].visited;  // Return true if the node is unvisited
 }
 
 // Movement functions
@@ -348,6 +348,23 @@ void handleTurn(Orientation newOrientation) {
         Serial.println("Turn LEFT.");
         turnLeft();
     }
+}
+
+void handleNoLine(int distanceFront, int distanceRight, int distanceLeft){
+  for(int i = 0; i < 10; i++){ // NEED TO CALIBRATE THIS, I CHOSE ARBITRARY NUMBER
+    moveForward();
+    if(distanceFront < 10){
+      if(distanceRight < 10){
+          turnLeft();
+          break;
+      } else if(distanceLeft < 10){
+         turnRight();
+         break;
+      }
+      handleIntersection();
+      break;
+    }
+  }
 }
 
 void backtrack(std::pair<int, int> previousNode) {
