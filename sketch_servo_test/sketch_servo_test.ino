@@ -10,14 +10,18 @@ void setup() {
   Serial.begin(9600);
   arm.attach(9);
   gripper.attach(10);
-  arm.write(45);  //start angle arm
-  gripper.write(180);   //start angle gripper
+  arm.write(125);  //start angle arm, 170 degrees is straight forward and 0 degrees is straight backwards
+  gripper.write(180);   //start angle gripper, 180 degrees is fully open and 0 is a little more than closed
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
-  if(Serial.find("s")) {
-    for(pos = arm.read(); pos >= 0 ; pos -= 1) {
+  if(Serial.find("c")) {
+    gripper.write(5);
+  } else if (Serial.find("o")) {
+    gripper.write(180);
+  }
+    /*for(pos = 0; pos >= 0 ; pos -= 1) {
       arm.write(pos);  
       delay(10);
     }
@@ -30,6 +34,7 @@ void loop() {
     gripper.write(180);
     delay(500);
     arm.write(45);
-  } 
+    
+  } */
 
 }
