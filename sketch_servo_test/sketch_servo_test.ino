@@ -1,35 +1,35 @@
 #include <Servo.h>
 
-Servo servoOutput9;
-Servo servoOutput10;
-int pos = 0;
-int topPos = 90;
+Servo arm; 
+Servo gripper;
 //Servo objects for digital output 9 and 10
+int pos = 0;
 
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
-  servoOutput9.attach(9);
-  servoOutput10.attach(10);
-  servoOutput9.write(0);
-  servoOutput10.write(0);
+  arm.attach(9);
+  gripper.attach(10);
+  arm.write(45);  //start angle arm
+  gripper.write(180);   //start angle gripper
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
   if(Serial.find("s")) {
-    servoOutput9.write(90);
+    for(pos = arm.read(); pos >= 0 ; pos -= 1) {
+      arm.write(pos);  
+      delay(10);
+    }
+    gripper.write(30);
     delay(500);
-    for(pos = 0; pos <= topPos ; pos += 1) {
-      servoOutput10.write(pos);  
+    for(pos = arm.read(); pos <= 90 ; pos += 1) {
+      arm.write(pos);  
       delay(15);
     }
+    gripper.write(180);
     delay(500);
-    for(pos = topPos; pos >= 0 ; pos -= 1) {
-      servoOutput10.write(pos);  
-      delay(15);
-    }
-    servoOutput9.write(0);
+    arm.write(45);
   } 
 
 }
