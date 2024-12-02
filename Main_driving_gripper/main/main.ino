@@ -15,6 +15,8 @@
 
 QTRSensors qtr;
 
+uint16_t count = 0;
+
 const uint8_t SensorCount = 6;
 uint16_t sensorValues[SensorCount];
 
@@ -64,8 +66,8 @@ CytronMD motorRight(PWM_PWM, 6, 13);
 
 // Ultrasonic sensors
 NewPing sonarFront(FRONT_TRIGGER_PIN, FRONT_ECHO_PIN, MAX_DISTANCE);
-NewPing sonarRight(RIGHT_TRIGGER_PIN, RIGHT_ECHO_PIN, MAX_DISTANCE);
-NewPing sonarLeft(LEFT_TRIGGER_PIN, LEFT_ECHO_PIN, MAX_DISTANCE);
+NewPing sonarRight(FRONT_TRIGGER_PIN, RIGHT_ECHO_PIN, MAX_DISTANCE);
+NewPing sonarLeft(FRONT_TRIGGER_PIN, LEFT_ECHO_PIN, MAX_DISTANCE);
 
 // Maze starting state
 int orientation = WEST;
@@ -118,10 +120,16 @@ void loop() {
   LineType lineType = detectLineType(sensorValues, LINE_THRESHOLD);
 
   int distanceFront = sonarFront.ping_cm();
+  // delay(100);
   int distanceRight = sonarRight.ping_cm();
+  // delay(100);
   int distanceLeft = sonarLeft.ping_cm();
 
   // Debugging
+  count = count + 1;
+
+  if (count > 5){
+    delay(200);
   Serial.print("QTR Position: ");
   Serial.println(position);
   Serial.print("Sensor values: ");
@@ -131,46 +139,50 @@ void loop() {
     Serial.print('\t');
   }
 
-  Serial.print("Distances - Front: ");
+  Serial.print("\nDistances  \nFront: ");
   Serial.println(distanceFront);
-  Serial.print(" Right: ");
+  Serial.print("Right: ");
   Serial.println(distanceRight);
-  Serial.print(" Left: ");
+  Serial.print("Left: ");
   Serial.println(distanceLeft);
+  count = 0;
+  }
+
+  turnLeft();
 
   // Step 2: Cylinder detection and rescue
-  if (detectCylinder() && lineType != NONE) {
-    rescueCylinder();
-    return;
-  }
+  // if (detectCylinder() && lineType != NONE) {
+  //   rescueCylinder();
+  //   return;
+  // }
   
-  if (rescuedCylinders == 3) {
-    exitMaze();  // Switch to A* for exit
-  }
+  // if (rescuedCylinders == 3) {
+  //   exitMaze();  // Switch to A* for exit
+  // }
 
-  // Step 3: Handle Line Type
-  switch (lineType) {
-    case STRAIGHT:
-      followLine(position); // Continue line-following
-      break;
+  // // Step 3: Handle Line Type
+  // switch (lineType) {
+  //   case STRAIGHT:
+  //     followLine(position); // Continue line-following
+  //     break;
 
-    case LEFT_TURN:
-      turnLeft(); // Perform left turn
-      break;
+  //   case LEFT_TURN:
+  //     turnLeft(); // Perform left turn
+  //     break;
 
-    case RIGHT_TURN:
-      turnRight(); // Perform right turn
-      break;
+  //   case RIGHT_TURN:
+  //     turnRight(); // Perform right turn
+  //     break;
 
-    case INTERSECTION:
-      handleIntersection(); // Use DFS to decide the path
-      break;
+  //   case INTERSECTION:
+  //     handleIntersection(); // Use DFS to decide the path
+  //     break;
 
-    case NONE:
-      // Lost the line
-      handleNoLine(distanceFront, distanceRight, distanceLeft);
-      break;
-  }
+  //   case NONE:
+  //     // Lost the line
+  //     handleNoLine(distanceFront, distanceRight, distanceLeft);
+  //     break;
+  // }
 
 }
 
@@ -287,38 +299,6 @@ void rescueCylinder() {
   Serial.println(rescuedCylinders);
 }
 
-// Movement functions
-void moveForward() {
-  motorLeft.setSpeed(150);
-  motorRight.setSpeed(150);
-}
-
-void turnLeft() {
-  motorLeft.setSpeed(-100);
-  motorRight.setSpeed(100);
-  changeOrientation(true);
-  delay(500);
-}
-
-void turnRight() {
-  motorLeft.setSpeed(100);
-  motorRight.setSpeed(-100);
-  changeOrientation(false);
-  delay(500);
-}
-
-void turnAround() {
-  motorLeft.setSpeed(-150);
-  motorRight.setSpeed(150);
-  changeOrientation(true);
-  changeOrientation(true);
-  delay(1000);
-}
-
-void stopMotors() {
-  motorLeft.setSpeed(0);
-  motorRight.setSpeed(0);
-}
 
 void changeOrientation(bool turnLeft) {
     if (turnLeft) {
