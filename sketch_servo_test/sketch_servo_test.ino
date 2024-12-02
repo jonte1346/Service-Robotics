@@ -24,11 +24,11 @@ void loop() {
     delay(100);
     gripper.write(5);
     delay(500);
-    for(pos = arm.read(); pos >= 80 ; pos -= 1) {
+    for(pos = arm.read(); pos >= 70 ; pos -= 1) {
       arm.write(pos);  
       delay(10);
     }
-    delay(100);
+    delay(500);
     gripper.write(180);
     delay(500);
     for(pos = arm.read(); pos <= 125 ; pos += 1) {
