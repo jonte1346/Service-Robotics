@@ -3,6 +3,7 @@
 //#include <ArduinoSTL.h> // Include the ArduinoSTL library
 //#include <utility>      // Include utility header for std::pair
 #include <QTRSensors.h>
+#include <Servo.h>
 
 // Distance sensor pins
 #define FRONT_TRIGGER_PIN 12
@@ -107,6 +108,9 @@ void setup() {
     qtr.calibrate();
   }
   digitalWrite(LED_BUILTIN, LOW); // turn off Arduino's LED to indicate we are through with calibration
+
+  // configure the gripper
+  gripperSetup();
 
   Serial.begin(9600);
   Serial.println("Robot Initialized");
