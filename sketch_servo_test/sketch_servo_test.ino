@@ -17,7 +17,12 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
   if(Serial.find("c")) {
-    for(pos = arm.read(); pos <= 170 ; pos += 1) {
+    gripAndRelease();
+  }
+}
+
+void gripAndRelease() {
+  for(pos = arm.read(); pos <= 170 ; pos += 1) {
       arm.write(pos);  
       delay(10);
     }
@@ -35,21 +40,4 @@ void loop() {
       arm.write(pos);  
       delay(10);
     }
-  }
-    /*for(pos = 0; pos >= 0 ; pos -= 1) {
-      arm.write(pos);  
-      delay(10);
-    }
-    gripper.write(30);
-    delay(500);
-    for(pos = arm.read(); pos <= 90 ; pos += 1) {
-      arm.write(pos);  
-      delay(15);
-    }
-    gripper.write(180);
-    delay(500);
-    arm.write(45);
-    
-  } */
-
 }
