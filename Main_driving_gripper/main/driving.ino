@@ -4,18 +4,22 @@ void moveForward() {
   motorRight.setSpeed(150);
 }
 
+void spin(){
+  motorLeft.setSpeed(-100);
+  motorRight.setSpeed(100);
+}
 void turnLeft() {
   motorLeft.setSpeed(-100);
   motorRight.setSpeed(100);
   changeOrientation(true);
-  delay(500);
+  delay(900);
 }
 
 void turnRight() {
   motorLeft.setSpeed(100);
   motorRight.setSpeed(-100);
   changeOrientation(false);
-  delay(500);
+  delay(900);
 }
 
 void turnAround() {
@@ -23,7 +27,7 @@ void turnAround() {
   motorRight.setSpeed(150);
   changeOrientation(true);
   changeOrientation(true);
-  delay(1000);
+  delay(1800);
 }
 
 void stopMotors() {

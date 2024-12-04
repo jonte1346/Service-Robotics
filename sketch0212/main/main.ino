@@ -12,6 +12,10 @@
 #define LEFT_ECHO_PIN 2
 #define MAX_DISTANCE 200
 
+const int buttonPin = 13;
+int lastButtonState = 0; // Previous state of the button
+bool toggleState = false; // Keeps track of toggle state
+
 QTRSensors qtr;
 
 uint16_t count = 0;
@@ -101,6 +105,8 @@ void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, HIGH); // turn on Arduino's LED to indicate we are in calibration mode
 
+  pinMode(buttonPin, INPUT_PULLUP);
+
   for (uint16_t i = 0; i < 400; i++)
   {
     qtr.calibrate();
@@ -159,7 +165,7 @@ void loop() {
   // }
 
 
-    stopMotors();
+    //stopMotors();
   // if (distanceFront < 5){
   //   gripAndRelease();
   //   // moveForward();
@@ -174,32 +180,32 @@ void loop() {
   //   exitMaze();  // Switch to A* for exit
   // }
 
-￼
 
-''''
-  // // Step 3: Handle Line Type
-  // switch (lineType) {
-  //   case STRAIGHT:
-  //     followLine(position); // Continue line-following
-  //     break;
+  // Step 3: Handle Line Type
+  switch (lineType) {
+    case STRAIGHT:
+      Serial.println("STRAIGHT");
+      //followLine(position); // Continue line-following
+      break;
 
-  //   case LEFT_TURN:
-  //     turnLeft(); // Perform left turn
-  //     break;
+    // case LEFT_TURN:
+    //   turnLeft(); // Perform left turn
+    //   break;
 
-  //   case RIGHT_TURN:
-  //     turnRight(); // Perform right turn
-  //     break;
+    // case RIGHT_TURN:
+    //   turnRight(); // Perform right turn
+    //   break;
 
-  //   case INTERSECTION:
-  //     handleIntersection(); // Use DFS to decide the path
-  //     break;
+    // case INTERSECTION:
+    //   handleIntersection(); // Use DFS to decide the path
+    //   break;
 
-  //   case NONE:
-  //     // Lost the line
-  //     handleNoLine(distanceFront, distanceRight, distanceLeft);
-  //     break;
-  // }
+    case NONE:
+      // Lost the line
+      Serial.println("NONE");
+      //handleNoLine(distanceFront, distanceRight, distanceLeft);
+      break;
+  }
 
 }
 

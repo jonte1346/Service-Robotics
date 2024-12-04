@@ -7,9 +7,9 @@
 
 // Distance sensor pins
 #define FRONT_TRIGGER_PIN 12
-#define FRONT_ECHO_PIN 11
-#define RIGHT_TRIGGER_PIN 8
-#define RIGHT_ECHO_PIN 7
+#define FRONT_ECHO_PIN 7
+#define RIGHT_TRIGGER_PIN 11
+#define RIGHT_ECHO_PIN 8
 #define LEFT_TRIGGER_PIN 4
 #define LEFT_ECHO_PIN 2
 #define MAX_DISTANCE 200
@@ -17,6 +17,8 @@
 QTRSensors qtr;
 
 uint16_t count = 0;
+
+const int buttonPin = 13;
 
 const uint8_t SensorCount = 6;
 uint16_t sensorValues[SensorCount];
@@ -63,7 +65,7 @@ Node nodes[NUM_NODES];
 
 // Motor configuration
 CytronMD motorLeft(PWM_PWM, 3, 5);
-CytronMD motorRight(PWM_PWM, 6, 13);
+CytronMD motorRight(PWM_PWM, 11, 6);
 
 // Ultrasonic sensors
 NewPing sonarFront(FRONT_TRIGGER_PIN, FRONT_ECHO_PIN, MAX_DISTANCE);
@@ -96,6 +98,13 @@ void setup() {
   currentNodeID = 0;  // Start at nodes[0]
   currentOrientation = WEST;
 
+  pinMode(buttonPin, INPUT_PULLUP);
+  int buttonState = digitalRead(buttonPin);
+  while(buttonState != LOW){
+    Serial.println("WAIT FOR CALIBRATION");
+    buttonState = digitalRead(buttonPin);
+  }
+
   // configure the sensors
   qtr.setTypeAnalog();
   qtr.setSensorPins((const uint8_t[]){A0, A1, A2, A3, A4, A5}, SensorCount);
@@ -103,10 +112,12 @@ void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, HIGH); // turn on Arduino's LED to indicate we are in calibration mode
 
-  for (uint16_t i = 0; i < 400; i++)
+  spin();
+  for (uint16_t i = 0; i < 250; i++)
   {
     qtr.calibrate();
   }
+  stopMotors();
   digitalWrite(LED_BUILTIN, LOW); // turn off Arduino's LED to indicate we are through with calibration
 
   // configure the gripper
@@ -114,6 +125,12 @@ void setup() {
 
   Serial.begin(9600);
   Serial.println("Robot Initialized");
+  pinMode(buttonPin, INPUT_PULLUP);
+  int loopButtonState = digitalRead(buttonPin);
+  while(loopButtonState != LOW){
+    Serial.println(loopButtonState);
+    loopButtonState = digitalRead(buttonPin);
+  }
 
 }
 
@@ -129,11 +146,6 @@ void loop() {
   // delay(100);
   int distanceLeft = sonarLeft.ping_cm();
 
-  // Debugging
-  count = count + 1;
-
-  if (count > 5){
-    delay(200);
   Serial.print("QTR Position: ");
   Serial.println(position);
   Serial.print("Sensor values: ");
@@ -149,10 +161,6 @@ void loop() {
   Serial.println(distanceRight);
   Serial.print("Left: ");
   Serial.println(distanceLeft);
-  count = 0;
-  }
-
-  turnLeft();
 
   // Step 2: Cylinder detection and rescue
   // if (detectCylinder() && lineType != NONE) {
@@ -165,10 +173,10 @@ void loop() {
   // }
 
   // // Step 3: Handle Line Type
-  // switch (lineType) {
-  //   case STRAIGHT:
-  //     followLine(position); // Continue line-following
-  //     break;
+  switch (lineType) {
+    case STRAIGHT:
+      followLine(position); // Continue line-following
+      break;
 
   //   case LEFT_TURN:
   //     turnLeft(); // Perform left turn
@@ -186,7 +194,7 @@ void loop() {
   //     // Lost the line
   //     handleNoLine(distanceFront, distanceRight, distanceLeft);
   //     break;
-  // }
+   }
 
 }
 
