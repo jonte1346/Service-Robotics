@@ -23,8 +23,8 @@ void turnRight() {
 }
 
 void turnAround() {
-  motorLeft.setSpeed(-150);
-  motorRight.setSpeed(150);
+  motorLeft.setSpeed(-100);
+  motorRight.setSpeed(100);
   changeOrientation(true);
   changeOrientation(true);
   delay(1800);

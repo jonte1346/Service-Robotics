@@ -8,9 +8,7 @@
 // Distance sensor pins
 #define FRONT_TRIGGER_PIN 12
 #define FRONT_ECHO_PIN 7
-#define RIGHT_TRIGGER_PIN 11
 #define RIGHT_ECHO_PIN 8
-#define LEFT_TRIGGER_PIN 4
 #define LEFT_ECHO_PIN 2
 #define MAX_DISTANCE 200
 
@@ -112,6 +110,8 @@ void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, HIGH); // turn on Arduino's LED to indicate we are in calibration mode
 
+  // configure the gripper
+  gripperSetup();
   spin();
   for (uint16_t i = 0; i < 250; i++)
   {
@@ -120,8 +120,6 @@ void setup() {
   stopMotors();
   digitalWrite(LED_BUILTIN, LOW); // turn off Arduino's LED to indicate we are through with calibration
 
-  // configure the gripper
-  gripperSetup();
 
   Serial.begin(9600);
   Serial.println("Robot Initialized");
@@ -163,10 +161,9 @@ void loop() {
   Serial.println(distanceLeft);
 
   // Step 2: Cylinder detection and rescue
-  // if (detectCylinder() && lineType != NONE) {
-  //   rescueCylinder();
-  //   return;
-  // }
+  if (detectCylinder() && lineType != NONE) {
+    rescueCylinder();
+  }
   
   // if (rescuedCylinders == 3) {
   //   exitMaze();  // Switch to A* for exit
@@ -175,25 +172,25 @@ void loop() {
   // // Step 3: Handle Line Type
   switch (lineType) {
     case STRAIGHT:
-      followLine(position); // Continue line-following
+       followLine(position); // Continue line-following
       break;
 
-  //   case LEFT_TURN:
-  //     turnLeft(); // Perform left turn
-  //     break;
+    // case LEFT_TURN:
+    //   turnLeft(); // Perform left turn
+    //   break;
 
-  //   case RIGHT_TURN:
-  //     turnRight(); // Perform right turn
-  //     break;
+    // case RIGHT_TURN:
+    //   turnRight(); // Perform right turn
+    //   break;
 
-  //   case INTERSECTION:
-  //     handleIntersection(); // Use DFS to decide the path
-  //     break;
+    // case INTERSECTION:
+    //   handleIntersection(); // Use DFS to decide the path
+    //   break;
 
-  //   case NONE:
-  //     // Lost the line
-  //     handleNoLine(distanceFront, distanceRight, distanceLeft);
-  //     break;
+    // case NONE:
+    //   // Lost the line
+    //   handleNoLine(distanceFront, distanceRight, distanceLeft);
+    //   break;
    }
 
 }
@@ -300,15 +297,16 @@ void setPathTrue(){
 // Rescue logic
 bool detectCylinder() {
   int objectDistance = sonarFront.ping_cm();
-  return (objectDistance > 0 && objectDistance < 10);
+  return (objectDistance > 0 && objectDistance < 7);
 }
 
 void rescueCylinder() {
   stopMotors();
-  delay(1000);
+  delay(100);
   rescuedCylinders++;
   Serial.print("Cylinder rescued! Total rescued: ");
   Serial.println(rescuedCylinders);
+  gripAndRelease();
 }
 
 
