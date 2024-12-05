@@ -12,14 +12,14 @@ void turnLeft() {
   motorLeft.setSpeed(-100);
   motorRight.setSpeed(100);
   changeOrientation(true);
-  delay(900);
+  delay(400);
 }
 
 void turnRight() {
   motorLeft.setSpeed(100);
   motorRight.setSpeed(-100);
   changeOrientation(false);
-  delay(900);
+  delay(400);
 }
 
 void turnAround() {
@@ -27,7 +27,7 @@ void turnAround() {
   motorRight.setSpeed(100);
   changeOrientation(true);
   changeOrientation(true);
-  delay(1800);
+  delay(900);
 }
 
 void stopMotors() {

@@ -15,6 +15,7 @@
 QTRSensors qtr;
 
 uint16_t count = 0;
+int error = 0;
 
 const int buttonPin = 13;
 
@@ -22,7 +23,7 @@ const uint8_t SensorCount = 6;
 uint16_t sensorValues[SensorCount];
 
 // Line-following thresholds
-const uint16_t LINE_THRESHOLD = 600; // Adjust based on calibration
+const uint16_t LINE_THRESHOLD = 500; // Adjust based on calibration
 const uint16_t CENTER_POSITION = 2500;
 
 //States
@@ -134,6 +135,11 @@ void setup() {
 
 // Main loop
 void loop() {
+  // Step 2: Cylinder detection and rescue
+  if (detectCylinder()) { // && lineType != NONE
+    rescueCylinder();
+    delay(100);
+  }
   // Step 1: Read QTR sensors
   uint16_t position = qtr.readLineBlack(sensorValues); // 0 for sensor 0, 1000 for sensor 1, 2000 for sensor 2 etc.
   LineType lineType = detectLineType(sensorValues, LINE_THRESHOLD);
@@ -144,26 +150,22 @@ void loop() {
   // delay(100);
   int distanceLeft = sonarLeft.ping_cm();
 
-  Serial.print("QTR Position: ");
-  Serial.println(position);
-  Serial.print("Sensor values: ");
-  for (uint8_t i = 0; i < SensorCount; i++)
-  {
-    Serial.print(sensorValues[i]);
-    Serial.print('\t');
-  }
+  // Serial.print("QTR Position: ");
+  // Serial.println(position);
+  // Serial.print("Sensor values: ");
+  // for (uint8_t i = 0; i < SensorCount; i++)
+  // {
+  //   Serial.print(sensorValues[i]);
+  //   Serial.print('\t');
+  // }
 
-  Serial.print("\nDistances  \nFront: ");
-  Serial.println(distanceFront);
-  Serial.print("Right: ");
-  Serial.println(distanceRight);
-  Serial.print("Left: ");
-  Serial.println(distanceLeft);
+  // Serial.print("\nDistances  \nFront: ");
+  // Serial.println(distanceFront);
+  // Serial.print("Right: ");
+  // Serial.println(distanceRight);
+  // Serial.print("Left: ");
+  // Serial.println(distanceLeft);
 
-  // Step 2: Cylinder detection and rescue
-  if (detectCylinder() && lineType != NONE) {
-    rescueCylinder();
-  }
   
   // if (rescuedCylinders == 3) {
   //   exitMaze();  // Switch to A* for exit
@@ -172,25 +174,30 @@ void loop() {
   // // Step 3: Handle Line Type
   switch (lineType) {
     case STRAIGHT:
-       followLine(position); // Continue line-following
+      Serial.println("Straight");
+      followLine(position); // Continue line-following
       break;
 
-    // case LEFT_TURN:
-    //   turnLeft(); // Perform left turn
-    //   break;
+    case LEFT_TURN:
+      Serial.println("LEFT");
+      turnLeft(); // Perform left turn
+      break;
 
-    // case RIGHT_TURN:
-    //   turnRight(); // Perform right turn
-    //   break;
+    case RIGHT_TURN:
+      Serial.println("Left");
+      turnRight(); // Perform right turn
+      break;
 
-    // case INTERSECTION:
-    //   handleIntersection(); // Use DFS to decide the path
-    //   break;
+    case INTERSECTION:
+      Serial.println("INTERSECTION");
+      handleIntersection(); // Use DFS to decide the path
+      break;
 
-    // case NONE:
-    //   // Lost the line
-    //   handleNoLine(distanceFront, distanceRight, distanceLeft);
-    //   break;
+    case NONE:
+      // Lost the line
+      Serial.println("NONE");
+      handleNoLine(distanceFront, distanceRight, distanceLeft);
+      break;
    }
 
 }
@@ -220,9 +227,9 @@ LineType detectLineType(uint16_t *sensorValues, uint16_t threshold) {
     return STRAIGHT;
   } else if (activeSensors >= 4) { // At least 4 sensors detecting the line
     if (firstActive <= 2 && lastActive <= 3) {
-      return LEFT_TURN; // Line on the left (left turn)
+      return RIGHT_TURN; // Line on the left (left turn)
     } else if (firstActive >= 2 && lastActive >= 3) {
-      return RIGHT_TURN; // Line on the right (right turn)
+      return LEFT_TURN; // Line on the right (right turn)
     } else {
       return INTERSECTION; // Line spans across center and edges
     }
@@ -233,8 +240,10 @@ LineType detectLineType(uint16_t *sensorValues, uint16_t threshold) {
 
 // Line-following logic
 void followLine(uint16_t position) {
-  int error = position - CENTER_POSITION; // Calculate error relative to the center
-  int turnSpeed = error / 10; // Adjust motor speed based on error
+  int prev_error = error;
+  error = position - CENTER_POSITION; // Calculate error relative to the center
+  int derivative_error = error - prev_error;
+  int turnSpeed = error / 10 + derivative_error/4; // Adjust motor speed based on error
 
   // Adjust motors to stay on the line
   motorLeft.setSpeed(150 - turnSpeed);
@@ -341,6 +350,10 @@ void handleTurn(Orientation newOrientation) {
 }
 
 void handleNoLine(int distanceFront, int distanceRight, int distanceLeft){
+  if(distanceFront < 15 && distanceRight < 15 && distanceLeft < 15){
+    turnAround();
+    return;
+  }
   for(int i = 0; i < 10; i++){ // NEED TO CALIBRATE THIS, I CHOSE ARBITRARY NUMBER
     moveForward();
     if(distanceFront < 10){
