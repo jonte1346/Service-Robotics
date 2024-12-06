@@ -11,7 +11,7 @@ void gripperSetup(){
   arm.attach(9);
   gripper.attach(10);
   arm.write(standby_angle);  //start angle arm, 170 degrees is straight forward and 0 degrees is straight backwards
-  gripper.write(180);   //start angle gripper, 180 degrees is fully open and 0 is a little more than closed
+  gripper.write(90);   //start angle gripper, 180 degrees is fully open and 0 is a little more than closed
 }
 
 //call the following function when a cylinder has been detected
@@ -28,7 +28,7 @@ void gripAndRelease() {
       delay(10);
     }
     delay(500);
-    gripper.write(180);
+    gripper.write(90);
     delay(500);
     for(pos = arm.read(); pos <= standby_angle ; pos += 1) {
       arm.write(pos);  
