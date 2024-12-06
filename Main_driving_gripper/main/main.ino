@@ -5,8 +5,11 @@
 #include <QTRSensors.h>
 #include <Servo.h>
 
+
 // Distance sensor pins
 #define FRONT_TRIGGER_PIN 12
+// #define RIGHT_TRIGGER_PIN 12
+// #define LEFT_TRIGGER_PIN 4
 #define FRONT_ECHO_PIN 7
 #define RIGHT_ECHO_PIN 8
 #define LEFT_ECHO_PIN 2
@@ -77,7 +80,12 @@ int rescuedCylinders = 0;
 int currentNodeID;
 Orientation currentOrientation;
 int turnNR = 0;
+const int nbrTurns = 10;
+const int printIndex = 20;
+int currentPrint = 0;
 
+// Arrays for turn indices 1 = left 2 = right 3 = straigth forward
+int turnIndices[nbrTurns] = {1,1,1,1,1,1,1,3,3,3}; 
 
 // Setup
 void setup() {
@@ -145,12 +153,11 @@ void loop() {
   uint16_t position = qtr.readLineBlack(sensorValues); // 0 for sensor 0, 1000 for sensor 1, 2000 for sensor 2 etc.
   LineType lineType = detectLineType(sensorValues, LINE_THRESHOLD);
 
-  int distanceFront = sonarFront.ping_cm();
+  // int distanceFront = sonarFront.ping_cm();
   // delay(100);
-  int distanceRight = sonarRight.ping_cm();
+  // int distanceRight = sonarRight.ping_cm();
   // delay(100);
-  int distanceLeft = sonarLeft.ping_cm();
-
+  // int distanceLeft = sonarLeft.ping_cm();
   // Serial.print("QTR Position: ");
   // Serial.println(position);
   // Serial.print("Sensor values: ");
@@ -159,6 +166,13 @@ void loop() {
   //   Serial.print(sensorValues[i]);
   //   Serial.print('\t');
   // }
+  // while (true){
+  // int distanceFront = sonarFront.ping_cm();
+  // delay(300);
+  // int distanceRight = sonarRight.ping_cm();
+  // delay(300);
+  // int distanceLeft = sonarLeft.ping_cm();
+  // delay(300);
 
   // Serial.print("\nDistances  \nFront: ");
   // Serial.println(distanceFront);
@@ -166,6 +180,7 @@ void loop() {
   // Serial.println(distanceRight);
   // Serial.print("Left: ");
   // Serial.println(distanceLeft);
+  // }
 
   
   // if (rescuedCylinders == 3) {
@@ -173,42 +188,68 @@ void loop() {
   // }
 
   //First guy rescue hardcoded
-  if (rescuedCylinders == 0 || turnNR < 4){
-    switch (lineType) {
-        case STRAIGHT:
-        Serial.println("Straight");
-        followLine(position); // Continue line-following
-        break;
+  // if (rescuedCylinders == 0 || turnNR < nbrTurns){
+  //   switch (lineType) {
+  //     case STRAIGHT:
+  //       if(currentPrint == printIndex){
+  //         Serial.println("Straight");
+  //         currentPrint = 0;
+  //       }
+  //       followLine(position); // Continue line-following
+  //       currentPrint++;
+  //       break;
 
-      case LEFT_TURN:
-        Serial.println("LEFT");
-        turnLeft(); // Perform left turn
-        break;
+  //     case LEFT_TURN:
+  //       Serial.println("LEFT");
+  //       turnLeft(); // Perform left turn
+  //       break;
 
-      case RIGHT_TURN:
-        Serial.println("Left");
-        turnRight(); // Perform right turn
-        break;
-      case INTERSECTION:
-        if (turnNR == 0 || turnNR == 1){
-          turnLeft();
-        } else if (turnNR == 2 || turnNR ==3){
-          turnRight();
-        }
-        turnNR++;
-        break;
-        case NONE:
-        // Lost the line
-        Serial.println("NONE");
-        handleNoLine(distanceFront, distanceRight, distanceLeft);
-        break;
-    }
-  } else {
+  //     case RIGHT_TURN:
+  //       Serial.println("Right");
+  //       turnRight(); // Perform right turn
+  //       break;
+
+  //     case INTERSECTION:
+  //       if (turnIndices[turnNR] == 1){
+  //         turnLeft();
+  //       } else if (turnIndices[turnNR] == 2){
+  //         turnRight();
+  //       }
+  //       else if (turnIndices[turnNR] == 3){
+  //         moveForward();
+  //       }
+  //       turnNR++;
+  //       break;
+  //     case NONE:
+  //       // Lost the line
+  //       if(currentPrint == printIndex){
+  //         Serial.println("NONE");
+  //         currentPrint = 0;
+  //       }
+        // if (turnIndices[turnNR] == 1){
+        //   turnLeftBlind();
+        // } else if (turnIndices[turnNR] == 2){
+        //   turnRightBlind();
+        // }
+        // else if (turnIndices[turnNR] == 3){
+        //   moveForwardBlind();
+        // }
+        // turnNR++;
+
+    //     handleNoLine(distanceFront, distanceRight, distanceLeft);
+    //     currentPrint++;
+    //     break;
+    // }
+  
     // // Step 3: Handle Line Type
     switch (lineType) {
       case STRAIGHT:
-        Serial.println("Straight");
+        if(currentPrint == printIndex){
+          Serial.println("Straight");
+          currentPrint = 0;
+        }
         followLine(position); // Continue line-following
+        currentPrint++;
         break;
 
       case LEFT_TURN:
@@ -217,7 +258,7 @@ void loop() {
         break;
 
       case RIGHT_TURN:
-        Serial.println("Left");
+        Serial.println("Right");
         turnRight(); // Perform right turn
         break;
 
@@ -228,12 +269,15 @@ void loop() {
 
       case NONE:
         // Lost the line
-        Serial.println("NONE");
-        handleNoLine(distanceFront, distanceRight, distanceLeft);
+        if(currentPrint == printIndex){
+          Serial.println("NONE");
+          currentPrint = 0;
+        }
+        handleNoLine();//distanceFront, distanceRight, distanceLeft);
+        currentPrint++;
         break;
     }
-  }
-
+  // }
 
 }
 
@@ -373,7 +417,7 @@ void handleTurn(Orientation newOrientation) {
     // Determine the turn direction
     if (difference == 0) {
         Serial.println("No turn needed, already facing the correct direction.");
-        moveForward();
+        moveForwardIntersection();
     } else if (difference == 1) {
         Serial.println("Turn RIGHT.");
         turnRight();
@@ -386,14 +430,30 @@ void handleTurn(Orientation newOrientation) {
     }
 }
 
-void handleNoLine(int distanceFront, int distanceRight, int distanceLeft){
-  if(distanceFront < 15 && distanceRight < 15 && distanceLeft < 15){
+void handleNoLine(){//int distanceFront, int distanceRight, int distanceLeft){
+  stopMotors();
+  delay(333);
+  int distanceFront = sonarFront.ping_cm();
+  delay(333);
+  int distanceRight = sonarRight.ping_cm();
+  delay(333);
+  int distanceLeft = sonarLeft.ping_cm();
+  delay(333);
+  Serial.print("\nDistances  \nFront: ");
+  Serial.println(distanceFront);
+  Serial.print("Right: ");
+  Serial.println(distanceRight);
+  Serial.print("Left: ");
+  Serial.println(distanceLeft);
+  if(distanceFront < 30 && distanceRight < 30 && distanceLeft < 30){
     turnAround();
     return;
   }
   for(int i = 0; i < 10; i++){ // NEED TO CALIBRATE THIS, I CHOSE ARBITRARY NUMBER
+    Serial.println("here");
     moveForward();
-    if(distanceFront < 10){
+    delay(50);
+    if(distanceFront < 15){
       if(distanceRight < 10){
           turnLeft();
           break;
