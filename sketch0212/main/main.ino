@@ -8,7 +8,7 @@
 // Distance sensor pins
 #define TRIGGER_PIN 12
 #define FRONT_ECHO_PIN 7
-#define RIGHT_ECHO_PIN 11
+#define RIGHT_ECHO_PIN 8
 #define LEFT_ECHO_PIN 2
 #define MAX_DISTANCE 200
 
@@ -17,6 +17,8 @@ int lastButtonState = 0; // Previous state of the button
 bool toggleState = false; // Keeps track of toggle state
 
 QTRSensors qtr;
+
+//hellososososo
 
 uint16_t count = 0;
 
@@ -247,8 +249,10 @@ LineType detectLineType(uint16_t *sensorValues, uint16_t threshold) {
 
 // Line-following logic
 void followLine(uint16_t position) {
+  int prev_error = error;
   int error = position - CENTER_POSITION; // Calculate error relative to the center
-  int turnSpeed = error / 10; // Adjust motor speed based on error
+  int derivatie_error = error - prev_error;
+  int turnSpeed = error / 10 + prev_error/20; // Adjust motor speed based on error
 
   // Adjust motors to stay on the line
   motorLeft.setSpeed(150 - turnSpeed);

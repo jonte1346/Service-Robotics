@@ -76,6 +76,7 @@ int orientation = WEST;
 int rescuedCylinders = 0;
 int currentNodeID;
 Orientation currentOrientation;
+int turnNR = 0;
 
 
 // Setup
@@ -171,34 +172,68 @@ void loop() {
   //   exitMaze();  // Switch to A* for exit
   // }
 
-  // // Step 3: Handle Line Type
-  switch (lineType) {
-    case STRAIGHT:
-      Serial.println("Straight");
-      followLine(position); // Continue line-following
-      break;
+  //First guy rescue hardcoded
+  if (rescuedCylinders == 0 || turnNR < 4){
+    switch (lineType) {
+        case STRAIGHT:
+        Serial.println("Straight");
+        followLine(position); // Continue line-following
+        break;
 
-    case LEFT_TURN:
-      Serial.println("LEFT");
-      turnLeft(); // Perform left turn
-      break;
+      case LEFT_TURN:
+        Serial.println("LEFT");
+        turnLeft(); // Perform left turn
+        break;
 
-    case RIGHT_TURN:
-      Serial.println("Left");
-      turnRight(); // Perform right turn
-      break;
+      case RIGHT_TURN:
+        Serial.println("Left");
+        turnRight(); // Perform right turn
+        break;
+      case INTERSECTION:
+        if (turnNR == 0 || turnNR == 1){
+          turnLeft();
+        } else if (turnNR == 2 || turnNR ==3){
+          turnRight();
+        }
+        turnNR++;
+        break;
+        case NONE:
+        // Lost the line
+        Serial.println("NONE");
+        handleNoLine(distanceFront, distanceRight, distanceLeft);
+        break;
+    }
+  } else {
+    // // Step 3: Handle Line Type
+    switch (lineType) {
+      case STRAIGHT:
+        Serial.println("Straight");
+        followLine(position); // Continue line-following
+        break;
 
-    case INTERSECTION:
-      Serial.println("INTERSECTION");
-      handleIntersection(); // Use DFS to decide the path
-      break;
+      case LEFT_TURN:
+        Serial.println("LEFT");
+        turnLeft(); // Perform left turn
+        break;
 
-    case NONE:
-      // Lost the line
-      Serial.println("NONE");
-      handleNoLine(distanceFront, distanceRight, distanceLeft);
-      break;
-   }
+      case RIGHT_TURN:
+        Serial.println("Left");
+        turnRight(); // Perform right turn
+        break;
+
+      case INTERSECTION:
+        Serial.println("INTERSECTION");
+        handleIntersection(); // Use DFS to decide the path
+        break;
+
+      case NONE:
+        // Lost the line
+        Serial.println("NONE");
+        handleNoLine(distanceFront, distanceRight, distanceLeft);
+        break;
+    }
+  }
+
 
 }
 
@@ -259,31 +294,33 @@ void handleIntersection() {
   setPathTrue(); // set the path we came from to traversed = true
   
     // Explore untraversed paths, regardless of whether the neighbor node is visited
-    if (!nodes[currentNodeID].north.traversed && nodes[currentNodeID].north.neighborID != NULL_EDGE) {
-        Serial.println("Moving North");
-        nodes[currentNodeID].north.traversed = true;  // Mark the path as traversed
-        currentNodeID = nodes[currentNodeID].north.neighborID;
-        handleTurn(NORTH);
-    } else if (!nodes[currentNodeID].south.traversed && nodes[currentNodeID].south.neighborID != NULL_EDGE) {
+    if (!nodes[currentNodeID].south.traversed && nodes[currentNodeID].south.neighborID != NULL_EDGE) {
         Serial.println("Moving South");
         nodes[currentNodeID].south.traversed = true;  // Mark the path as traversed
         currentNodeID = nodes[currentNodeID].south.neighborID;
         handleTurn(SOUTH);
-    } else if (!nodes[currentNodeID].east.traversed && nodes[currentNodeID].east.neighborID != NULL_EDGE) {
-        Serial.println("Moving East");
-        nodes[currentNodeID].east.traversed = true;  // Mark the path as traversed
-        currentNodeID = nodes[currentNodeID].east.neighborID;
-        handleTurn(EAST);
     } else if (!nodes[currentNodeID].west.traversed && nodes[currentNodeID].west.neighborID != NULL_EDGE) {
         Serial.println("Moving West");
         nodes[currentNodeID].west.traversed = true;  // Mark the path as traversed
         currentNodeID = nodes[currentNodeID].west.neighborID;
         handleTurn(WEST);
+    } else if (!nodes[currentNodeID].north.traversed && nodes[currentNodeID].north.neighborID != NULL_EDGE) {
+        Serial.println("Moving North");
+        nodes[currentNodeID].north.traversed = true;  // Mark the path as traversed
+        currentNodeID = nodes[currentNodeID].north.neighborID;
+        handleTurn(NORTH);
+    } else if (!nodes[currentNodeID].east.traversed && nodes[currentNodeID].east.neighborID != NULL_EDGE) {
+        Serial.println("Moving East");
+        nodes[currentNodeID].east.traversed = true;  // Mark the path as traversed
+        currentNodeID = nodes[currentNodeID].east.neighborID;
+        handleTurn(EAST);
     } else {
         // No untraversed paths, backtrack or terminate
         Serial.println("No untraversed paths, stopping traversal.");
     }
 }
+
+
 
 void setPathTrue(){
   switch(currentOrientation){
