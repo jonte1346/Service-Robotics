@@ -153,6 +153,10 @@ void loop() {
   uint16_t position = qtr.readLineBlack(sensorValues); // 0 for sensor 0, 1000 for sensor 1, 2000 for sensor 2 etc.
   LineType lineType = detectLineType(sensorValues, LINE_THRESHOLD);
 
+  int distanceFront = sonarFront.ping_cm();
+  int distanceRight = sonarRight.ping_cm();
+  int distanceLeft = sonarLeft.ping_cm();
+
   // int distanceFront = sonarFront.ping_cm();
   // delay(100);
   // int distanceRight = sonarRight.ping_cm();
@@ -253,11 +257,17 @@ void loop() {
         break;
 
       case LEFT_TURN:
+        if(distanceRight > 30){
+          break;
+        }
         Serial.println("LEFT");
         turnLeft(); // Perform left turn
         break;
 
       case RIGHT_TURN:
+      if(distanceLeft > 30){
+          break;
+        }
         Serial.println("Right");
         turnRight(); // Perform right turn
         break;
@@ -360,6 +370,7 @@ void handleIntersection() {
         handleTurn(EAST);
     } else {
         // No untraversed paths, backtrack or terminate
+        turnLeft();
         Serial.println("No untraversed paths, stopping traversal.");
     }
 }
@@ -452,13 +463,13 @@ void handleNoLine(){//int distanceFront, int distanceRight, int distanceLeft){
   for(int i = 0; i < 10; i++){ // NEED TO CALIBRATE THIS, I CHOSE ARBITRARY NUMBER
     Serial.println("here");
     moveForward();
-    delay(50);
-    if(distanceFront < 15){
-      if(distanceRight < 10){
-          turnLeft();
+    delay(40);
+    if(distanceFront < 18){
+      if(distanceRight < 15){
+          turnLeftBlind();
           break;
-      } else if(distanceLeft < 10){
-         turnRight();
+      } else if(distanceLeft < 15){
+         turnRightBlind();
          break;
       }
       handleIntersection();

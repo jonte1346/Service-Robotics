@@ -18,20 +18,20 @@ void turnLeft() {
   motorLeft.setSpeed(-100);
   motorRight.setSpeed(100);
   changeOrientation(true);
-  delay(900);
+  delay(500);
 }
 
 void turnRight() {
   motorLeft.setSpeed(100);
   motorRight.setSpeed(-100);
   changeOrientation(false);
-  delay(900);
+  delay(500);
 }
 
 void turnAround() {
   Serial.println("Turn Around");
-  motorLeft.setSpeed(-100);
-  motorRight.setSpeed(100);
+  motorLeft.setSpeed(100);
+  motorRight.setSpeed(-100);
   changeOrientation(true);
   changeOrientation(true);
   delay(1500);
@@ -49,29 +49,17 @@ void moveForwardBlind() {
 }
 
 void turnLeftBlind() {
-  motorLeft.setSpeed(100);
+  motorLeft.setSpeed(-100);
   motorRight.setSpeed(100);
-  delay(500);
-  motorLeft.setSpeed(-50);
-  motorRight.setSpeed(50);
   changeOrientation(true);
   delay(800);
-  motorLeft.setSpeed(100);
-  motorRight.setSpeed(100);
-  delay(500);
 }
 
 void turnRightBlind() {
   motorLeft.setSpeed(100);
-  motorRight.setSpeed(100);
-  delay(1000);
-  motorLeft.setSpeed(50);
-  motorRight.setSpeed(-50);
-  changeOrientation(true);
+  motorRight.setSpeed(-100);
+  changeOrientation(false);
   delay(800);
-  motorLeft.setSpeed(100);
-  motorRight.setSpeed(100);
-  delay(1000);
 }
 
 void turnAroundBlind() {
