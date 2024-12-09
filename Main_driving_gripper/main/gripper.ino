@@ -5,7 +5,7 @@ Servo gripper;
 int pos = 0;  //angle tracker
 uint8_t standby_angle = 90;
 uint8_t gripp_angle = 170;
-uint8_t release_angle = 70;
+uint8_t release_angle = 75;
 
 void gripperSetup(){
   arm.attach(9);

@@ -33,37 +33,18 @@ const uint16_t CENTER_POSITION = 2500;
 enum States {INIT, GET_NEXT_GOAL, MOVE_TO_GOAL, LOOK_FOR_PERSON, PICKUP_PERSON, MOVE_TO_BASE, DONE};
 
 // Orientation
-enum Orientation {NORTH = 0, EAST = 1, SOUTH = 2, WEST = 3};
-
-// Movement and navigation modes
-enum MovementMode { LINE_FOLLOWING, FORWARD, TURN_LEFT, TURN_RIGHT, TURN_AROUND, WALL_FOLLOWING, STOP };
-MovementMode currentMode = LINE_FOLLOWING;
+enum Orientation {FORWARD = 0, LEFT = 1, RIGHT = 2, BACKWARD = 3};
 
 enum LineType { STRAIGHT, LEFT_TURN, RIGHT_TURN, INTERSECTION, NONE };
+uint16_t position;
 
 // Define constants for edge states
 #define NULL_EDGE -1  // No edge in this direction
 #define DEAD_END -2   // Dead end in this direction
 #define START -3
 
-// Define a Path struct to represent each direction's attributes
-struct Path {
-    int neighborID;  // ID of the adjacent node, DEAD_END, or NULL_EDGE
-    bool traversed;  // Indicates if the path has been traversed
-};
-
-// Define the Node structure
-struct Node {
-    int id;          // Unique ID for the node
-    Path north;      // Path to the north
-    Path south;      // Path to the south
-    Path east;       // Path to the east
-    Path west;       // Path to the west
-};
-
 // Array to hold all nodes in the maze
 #define NUM_NODES 11  // Total number of intersections in the maze
-Node nodes[NUM_NODES];
 
 // Motor configuration
 CytronMD motorLeft(PWM_PWM, 3, 5);
@@ -74,37 +55,16 @@ NewPing sonarFront(FRONT_TRIGGER_PIN, FRONT_ECHO_PIN, MAX_DISTANCE);
 NewPing sonarRight(FRONT_TRIGGER_PIN, RIGHT_ECHO_PIN, MAX_DISTANCE);
 NewPing sonarLeft(FRONT_TRIGGER_PIN, LEFT_ECHO_PIN, MAX_DISTANCE);
 
-// Maze starting state
-int orientation = WEST;
+
 int rescuedCylinders = 0;
-int currentNodeID;
-Orientation currentOrientation;
 int turnNR = 0;
-const int nbrTurns = 10;
-const int printIndex = 20;
-int currentPrint = 0;
+
 
 // Arrays for turn indices 1 = left 2 = right 3 = straigth forward
-int turnIndices[nbrTurns] = {1,1,1,1,1,1,1,3,3,3}; 
+Orientation movements[] = {LEFT, LEFT, LEFT, LEFT, FORWARD, FORWARD, LEFT, LEFT, LEFT, FORWARD, LEFT, LEFT, LEFT, RIGHT, LEFT, LEFT, LEFT, LEFT, FORWARD, FORWARD, RIGHT, FORWARD, RIGHT, BACKWARD, LEFT, RIGHT}; 
 
 // Setup
 void setup() {
-  //id, north, south, east, west
-// Define nodes and their connections (IDs, DEAD_END, or NULL_EDGE)
-  nodes[0] = {0, {NULL_EDGE, false}, {START, true}, {2, false}, {1, false}};  // Start/Exit node
-  nodes[1] = {1, {4, false}, {DEAD_END, false}, {0, false}, {3, false}};
-  nodes[2] = {2, {NULL_EDGE, false}, {0, false}, {5, false}, {DEAD_END, false}};
-  nodes[3] = {3, {DEAD_END, false}, {4, false}, {NULL_EDGE, false}, {1, false}};
-  nodes[4] = {4, {3, false}, {9, false}, {NULL_EDGE, false}, {1, false}};
-  nodes[5] = {5, {NULL_EDGE, false}, {6, false}, {7, false}, {2, false}};
-  nodes[6] = {6, {5, false}, {7, false}, {DEAD_END, false}, {NULL_EDGE, false}};
-  nodes[7] = {7, {8, false}, {6, false}, {NULL_EDGE, false}, {5, false}};
-  nodes[8] = {8, {DEAD_END, false}, {NULL_EDGE, false}, {7, false}, {9, false}};
-  nodes[9] = {9, {10, false}, {NULL_EDGE, false}, {8, false}, {4, false}};
-  nodes[10] = {10, {DEAD_END, false}, {9, false}, {NULL_EDGE, false}, {DEAD_END, false}};
-
-  currentNodeID = 0;  // Start at nodes[0]
-  currentOrientation = WEST;
 
   pinMode(buttonPin, INPUT_PULLUP);
   int buttonState = digitalRead(buttonPin);
@@ -150,7 +110,7 @@ void loop() {
     delay(100);
   }
   // Step 1: Read QTR sensors
-  uint16_t position = qtr.readLineBlack(sensorValues); // 0 for sensor 0, 1000 for sensor 1, 2000 for sensor 2 etc.
+  position = qtr.readLineBlack(sensorValues); // 0 for sensor 0, 1000 for sensor 1, 2000 for sensor 2 etc.
   LineType lineType = detectLineType(sensorValues, LINE_THRESHOLD);
 
   int distanceFront = sonarFront.ping_cm();
@@ -187,107 +147,50 @@ void loop() {
   // }
 
   
-  // if (rescuedCylinders == 3) {
-  //   exitMaze();  // Switch to A* for exit
-  // }
+   if (rescuedCylinders == 3) {
+     exitMaze();  // Switch to A* for exit
+   }
 
-  //First guy rescue hardcoded
-  // if (rescuedCylinders == 0 || turnNR < nbrTurns){
-  //   switch (lineType) {
-  //     case STRAIGHT:
-  //       if(currentPrint == printIndex){
-  //         Serial.println("Straight");
-  //         currentPrint = 0;
-  //       }
-  //       followLine(position); // Continue line-following
-  //       currentPrint++;
-  //       break;
-
-  //     case LEFT_TURN:
-  //       Serial.println("LEFT");
-  //       turnLeft(); // Perform left turn
-  //       break;
-
-  //     case RIGHT_TURN:
-  //       Serial.println("Right");
-  //       turnRight(); // Perform right turn
-  //       break;
-
-  //     case INTERSECTION:
-  //       if (turnIndices[turnNR] == 1){
-  //         turnLeft();
-  //       } else if (turnIndices[turnNR] == 2){
-  //         turnRight();
-  //       }
-  //       else if (turnIndices[turnNR] == 3){
-  //         moveForward();
-  //       }
-  //       turnNR++;
-  //       break;
-  //     case NONE:
-  //       // Lost the line
-  //       if(currentPrint == printIndex){
-  //         Serial.println("NONE");
-  //         currentPrint = 0;
-  //       }
-        // if (turnIndices[turnNR] == 1){
-        //   turnLeftBlind();
-        // } else if (turnIndices[turnNR] == 2){
-        //   turnRightBlind();
-        // }
-        // else if (turnIndices[turnNR] == 3){
-        //   moveForwardBlind();
-        // }
-        // turnNR++;
-
-    //     handleNoLine(distanceFront, distanceRight, distanceLeft);
-    //     currentPrint++;
-    //     break;
-    // }
   
     // // Step 3: Handle Line Type
     switch (lineType) {
       case STRAIGHT:
-        if(currentPrint == printIndex){
-          Serial.println("Straight");
-          currentPrint = 0;
-        }
         followLine(position); // Continue line-following
-        currentPrint++;
         break;
 
       case LEFT_TURN:
         if(distanceRight > 30){
           break;
         }
-        Serial.println("LEFT");
+        if(distanceFront > 30 || distanceFront == 0){
+          Serial.println("INTERSECTION");
+          handleIntersection();
+          break;
+        }
         turnLeft(); // Perform left turn
         break;
 
       case RIGHT_TURN:
-      if(distanceLeft > 30){
+        if(distanceLeft > 30){
           break;
         }
-        Serial.println("Right");
+        if(distanceFront > 30 || distanceFront == 0){
+          Serial.println("INTERSECTION");
+          handleIntersection();
+          break;
+        }
         turnRight(); // Perform right turn
         break;
 
       case INTERSECTION:
         Serial.println("INTERSECTION");
-        handleIntersection(); // Use DFS to decide the path
+        handleIntersection(); 
         break;
 
       case NONE:
-        // Lost the line
-        if(currentPrint == printIndex){
-          Serial.println("NONE");
-          currentPrint = 0;
-        }
-        handleNoLine();//distanceFront, distanceRight, distanceLeft);
-        currentPrint++;
+        handleNoLine();
         break;
     }
-  // }
 
 }
 
@@ -340,65 +243,28 @@ void followLine(uint16_t position) {
 }
 
 void handleIntersection() {
-
-  // Choose a path based on DFS
-  Serial.print("Visiting Node ");
-  Serial.println(currentNodeID);
-
-  setPathTrue(); // set the path we came from to traversed = true
-  
-    // Explore untraversed paths, regardless of whether the neighbor node is visited
-    if (!nodes[currentNodeID].south.traversed && nodes[currentNodeID].south.neighborID != NULL_EDGE) {
-        Serial.println("Moving South");
-        nodes[currentNodeID].south.traversed = true;  // Mark the path as traversed
-        currentNodeID = nodes[currentNodeID].south.neighborID;
-        handleTurn(SOUTH);
-    } else if (!nodes[currentNodeID].west.traversed && nodes[currentNodeID].west.neighborID != NULL_EDGE) {
-        Serial.println("Moving West");
-        nodes[currentNodeID].west.traversed = true;  // Mark the path as traversed
-        currentNodeID = nodes[currentNodeID].west.neighborID;
-        handleTurn(WEST);
-    } else if (!nodes[currentNodeID].north.traversed && nodes[currentNodeID].north.neighborID != NULL_EDGE) {
-        Serial.println("Moving North");
-        nodes[currentNodeID].north.traversed = true;  // Mark the path as traversed
-        currentNodeID = nodes[currentNodeID].north.neighborID;
-        handleTurn(NORTH);
-    } else if (!nodes[currentNodeID].east.traversed && nodes[currentNodeID].east.neighborID != NULL_EDGE) {
-        Serial.println("Moving East");
-        nodes[currentNodeID].east.traversed = true;  // Mark the path as traversed
-        currentNodeID = nodes[currentNodeID].east.neighborID;
-        handleTurn(EAST);
-    } else {
-        // No untraversed paths, backtrack or terminate
-        turnLeft();
-        Serial.println("No untraversed paths, stopping traversal.");
-    }
-}
-
-
-
-void setPathTrue(){
-  switch(currentOrientation){
-    case NORTH:
-      nodes[currentNodeID].north.traversed = true;
+  Serial.println(movements[turnNR]);
+  switch(movements[turnNR]){
+    case FORWARD:
+      moveForwardIntersection();
       break;
-    case EAST:
-      nodes[currentNodeID].east.traversed = true;
+    case LEFT:
+      turnLeft();
       break;
-    case SOUTH:
-      nodes[currentNodeID].south.traversed = true;
+    case RIGHT:
+      turnRight();
       break;
-    case WEST:
-      nodes[currentNodeID].west.traversed = true;
+    case BACKWARD:
       break;
-  } 
+  }
+  turnNR++;
 }
 
 
 // Rescue logic
 bool detectCylinder() {
   int objectDistance = sonarFront.ping_cm();
-  return (objectDistance > 0 && objectDistance < 7);
+  return (objectDistance > 0 && objectDistance < 3);
 }
 
 void rescueCylinder() {
@@ -410,36 +276,6 @@ void rescueCylinder() {
   gripAndRelease();
 }
 
-
-void changeOrientation(bool turnLeft) {
-    if (turnLeft) {
-        // Turn left: Decrement, wrap around if less than 0
-        currentOrientation = static_cast<Orientation>((currentOrientation + 3) % 4);
-    } else {
-        // Turn right: Increment, wrap around if greater than 3
-        currentOrientation = static_cast<Orientation>((currentOrientation + 1) % 4);
-    }
-}
-
-// Function to handle turning to a new orientation
-void handleTurn(Orientation newOrientation) {
-    int difference = (newOrientation - currentOrientation + 4) % 4;
-
-    // Determine the turn direction
-    if (difference == 0) {
-        Serial.println("No turn needed, already facing the correct direction.");
-        moveForwardIntersection();
-    } else if (difference == 1) {
-        Serial.println("Turn RIGHT.");
-        turnRight();
-    } else if (difference == 2) {
-        Serial.println("Turn 180 degrees.");
-        turnAround();
-    } else if (difference == 3) {
-        Serial.println("Turn LEFT.");
-        turnLeft();
-    }
-}
 
 void handleNoLine(){//int distanceFront, int distanceRight, int distanceLeft){
   stopMotors();
@@ -460,21 +296,35 @@ void handleNoLine(){//int distanceFront, int distanceRight, int distanceLeft){
     turnAround();
     return;
   }
-  for(int i = 0; i < 10; i++){ // NEED TO CALIBRATE THIS, I CHOSE ARBITRARY NUMBER
-    Serial.println("here");
-    moveForward();
-    delay(40);
-    if(distanceFront < 18){
-      if(distanceRight < 15){
-          turnLeftBlind();
-          break;
-      } else if(distanceLeft < 15){
-         turnRightBlind();
-         break;
-      }
-      handleIntersection();
+  moveForwardBlind();
+  if(turnNR < 5){
+    turnRightBlind();
+    moveForwardBlind();
+    position = qtr.readLineBlack(sensorValues); // 0 for sensor 0, 1000 for sensor 1, 2000 for sensor 2 etc.
+    followLine(position);
+    return;
+  }
+  switch(movements[turnNR]){
+    case LEFT:
+      turnLeftBlind();
+      moveForwardBlindAgain();
+      position = qtr.readLineBlack(sensorValues); // 0 for sensor 0, 1000 for sensor 1, 2000 for sensor 2 etc
+      followLine(position);
       break;
-    }
+    case RIGHT:
+      turnRightBlind();
+      moveForwardBlindAgain();
+      position = qtr.readLineBlack(sensorValues); // 0 for sensor 0, 1000 for sensor 1, 2000 for sensor 2 etc.
+      followLine(position);
+      break;
+    case FORWARD:
+      moveForwardBlind();
+      position = qtr.readLineBlack(sensorValues); // 0 for sensor 0, 1000 for sensor 1, 2000 for sensor 2 etc.
+      followLine(position);
+      break;
+  }
+  if(turnNR > 5){
+    turnNR++;
   }
 }
 
