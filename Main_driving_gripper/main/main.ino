@@ -7,13 +7,17 @@
 
 
 // Distance sensor pins
-#define FRONT_TRIGGER_PIN 12
-// #define RIGHT_TRIGGER_PIN 12
-// #define LEFT_TRIGGER_PIN 4
+#define FRONT_TRIGGER_PIN 13
+#define RIGHT_TRIGGER_PIN 12
+#define LEFT_TRIGGER_PIN 4
 #define FRONT_ECHO_PIN 7
 #define RIGHT_ECHO_PIN 8
 #define LEFT_ECHO_PIN 2
 #define MAX_DISTANCE 200
+
+int distanceFront = 0;
+int distanceRight = 0;
+int distanceLeft = 0;
 
 QTRSensors qtr;
 
@@ -52,8 +56,8 @@ CytronMD motorRight(PWM_PWM, 11, 6);
 
 // Ultrasonic sensors
 NewPing sonarFront(FRONT_TRIGGER_PIN, FRONT_ECHO_PIN, MAX_DISTANCE);
-NewPing sonarRight(FRONT_TRIGGER_PIN, RIGHT_ECHO_PIN, MAX_DISTANCE);
-NewPing sonarLeft(FRONT_TRIGGER_PIN, LEFT_ECHO_PIN, MAX_DISTANCE);
+NewPing sonarRight(RIGHT_TRIGGER_PIN, RIGHT_ECHO_PIN, MAX_DISTANCE);
+NewPing sonarLeft(LEFT_TRIGGER_PIN, LEFT_ECHO_PIN, MAX_DISTANCE);
 
 
 int rescuedCylinders = 0;
@@ -121,9 +125,9 @@ void loop() {
   //   }
   // }
 
-  int distanceFront = sonarFront.ping_cm();
-  int distanceRight = sonarRight.ping_cm();
-  int distanceLeft = sonarLeft.ping_cm();
+  distanceFront = sonarFront.ping_cm();
+  distanceRight = sonarRight.ping_cm();
+  distanceLeft = sonarLeft.ping_cm();
 
   // int distanceFront = sonarFront.ping_cm();
   // delay(100);
@@ -274,7 +278,7 @@ void handleIntersection() {
 // Rescue logic
 bool detectCylinder() {
   int objectDistance = sonarFront.ping_cm();
-  return (objectDistance > 0 && objectDistance < 3);
+  return (objectDistance > 0 && objectDistance < 4);
 }
 
 void rescueCylinder() {
@@ -289,19 +293,10 @@ void rescueCylinder() {
 
 void handleNoLine(){//int distanceFront, int distanceRight, int distanceLeft){
   stopMotors();
-  delay(333);
   int distanceFront = sonarFront.ping_cm();
-  delay(333);
   int distanceRight = sonarRight.ping_cm();
-  delay(333);
   int distanceLeft = sonarLeft.ping_cm();
-  delay(333);
-  Serial.print("\nDistances  \nFront: ");
-  Serial.println(distanceFront);
-  Serial.print("Right: ");
-  Serial.println(distanceRight);
-  Serial.print("Left: ");
-  Serial.println(distanceLeft);
+
   if(distanceFront < 30 && distanceRight < 30 && distanceLeft < 30){
     turnAround();
     return;

@@ -46,13 +46,13 @@ void moveForwardBlind() {
   Serial.println("moveForwardBlind");
   motorLeft.setSpeed(100);
   motorRight.setSpeed(100);
-  delay(1600);
+  delay(1450);
 }
 void moveForwardBlindAgain() {
   Serial.println("moveForwardBlind");
   motorLeft.setSpeed(100);
   motorRight.setSpeed(100);
-  delay(1400);
+  delay(1200);
 }
 
 void turnLeftBlind() {
