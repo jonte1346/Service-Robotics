@@ -9,7 +9,7 @@ void moveForwardIntersection() {
   Serial.println("moveForwardIntersection");
   motorLeft.setSpeed(150);
   motorRight.setSpeed(150);
-  delay(200);
+  delay(100);
 }
 
 void spin(){
@@ -42,17 +42,24 @@ void stopMotors() {
   motorRight.setSpeed(0);
 }
 
+void moveForwardBlindShort() {
+  Serial.println("moveForwardBlindShort");
+  motorLeft.setSpeed(100);
+  motorRight.setSpeed(100);
+  delay(1000);
+}
+
 void moveForwardBlind() {
   Serial.println("moveForwardBlind");
   motorLeft.setSpeed(100);
   motorRight.setSpeed(100);
-  delay(1450);
+  delay(1400);
 }
-void moveForwardBlindAgain() {
-  Serial.println("moveForwardBlind");
+void moveForwardBlindLong() {
+  Serial.println("moveForwardBlindLong");
   motorLeft.setSpeed(100);
   motorRight.setSpeed(100);
-  delay(1200);
+  delay(1600);
 }
 
 void turnLeftBlind() {

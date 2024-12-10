@@ -175,23 +175,38 @@ void loop() {
         if(distanceRight > 20){
           break;
         }
-        if(distanceFront > 30 || distanceFront == 0){
-          Serial.println("INTERSECTION");
-          handleIntersection();
-          break;
+        if(distanceFront > 40){
+          int averageDistanceFront = 0;
+          for (int i = 0; i < 3; i++) {
+            distanceFront = sonarFront.ping_cm();
+            averageDistanceFront += distanceFront;
+          }
+          if (averageDistanceFront/3 > 40) {
+            Serial.println("INTERSECTION");
+            handleIntersection();
+            break;
+          }
         }
         turnLeft(); // Perform left turn
         break;
 
       case RIGHT_TURN:
         Serial.println("RIGHT_TURN");
+        Serial.println(distanceFront);
         if(distanceLeft > 20){
           break;
         }
-        if(distanceFront > 30 || distanceFront == 0){
-          Serial.println("INTERSECTION");
-          handleIntersection();
-          break;
+        if(distanceFront > 40){
+          int averageDistanceFront = 0;
+          for (int i = 0; i < 3; i++) {
+            distanceFront = sonarFront.ping_cm();
+            averageDistanceFront += distanceFront;
+          }
+          if (averageDistanceFront/3 > 40) {
+            Serial.println("INTERSECTION");
+            handleIntersection();
+            break;
+          }
         }
         turnRight(); // Perform right turn
         break;
@@ -269,6 +284,7 @@ void handleIntersection() {
       turnRight();
       break;
     case BACKWARD:
+      turnAround();
       break;
   }
   turnNR++;
@@ -278,7 +294,7 @@ void handleIntersection() {
 // Rescue logic
 bool detectCylinder() {
   int objectDistance = sonarFront.ping_cm();
-  return (objectDistance > 0 && objectDistance < 4);
+  return (objectDistance > 0 && objectDistance < 5);
 }
 
 void rescueCylinder() {
@@ -301,8 +317,9 @@ void handleNoLine(){//int distanceFront, int distanceRight, int distanceLeft){
     turnAround();
     return;
   }
-  moveForwardBlind();
+  
   if(turnNR < 5){
+    moveForwardBlind();
     turnRightBlind();
     moveForwardBlind();
     position = qtr.readLineBlack(sensorValues); // 0 for sensor 0, 1000 for sensor 1, 2000 for sensor 2 etc.
@@ -311,14 +328,22 @@ void handleNoLine(){//int distanceFront, int distanceRight, int distanceLeft){
   }
   switch(movements[turnNR]){
     case LEFT:
+      if (turnNR < 7) {
+        moveForwardBlindLong();
+      } else if (turnNR > 8) {
+        moveForwardBlind();
+      }
       turnLeftBlind();
-      moveForwardBlindAgain();
+      moveForwardBlindShort();
       position = qtr.readLineBlack(sensorValues); // 0 for sensor 0, 1000 for sensor 1, 2000 for sensor 2 etc
-      followLine(position);
+      for (int i = 0; i < 3; i++) {
+        followLine(position);
+      }
       break;
     case RIGHT:
+      moveForwardBlind();
       turnRightBlind();
-      moveForwardBlindAgain();
+      moveForwardBlindShort();
       position = qtr.readLineBlack(sensorValues); // 0 for sensor 0, 1000 for sensor 1, 2000 for sensor 2 etc.
       followLine(position);
       break;
