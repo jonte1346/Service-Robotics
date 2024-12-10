@@ -1,4 +1,11 @@
 #include <Servo.h>
+#include <NewPing.h>
+
+#define Front_Trigger_Pin 12
+#define Front_Echo_Pin 7
+#define MAX_DISTANCE 200
+
+NewPing sonarFront(Front_Trigger_Pin, Front_Echo_Pin, MAX_DISTANCE);
 
 Servo arm; 
 Servo gripper;
@@ -16,6 +23,8 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
+  int distance = sonarFront.ping_cm();
+  Serial.println(distance);
   if(Serial.find("c")) {
     gripAndRelease();
   }
@@ -29,7 +38,7 @@ void gripAndRelease() {
     delay(100);
     gripper.write(5);
     delay(500);
-    for(pos = arm.read(); pos >= 70 ; pos -= 1) {
+    for(pos = arm.read(); pos >= 75 ; pos -= 1) {
       arm.write(pos);  
       delay(10);
     }

@@ -26,7 +26,7 @@ const uint8_t SensorCount = 6;
 uint16_t sensorValues[SensorCount];
 
 // Line-following thresholds
-const uint16_t LINE_THRESHOLD = 500; // Adjust based on calibration
+const uint16_t LINE_THRESHOLD = 650; // Adjust based on calibration
 const uint16_t CENTER_POSITION = 2500;
 
 //States
@@ -83,7 +83,7 @@ void setup() {
   // configure the gripper
   gripperSetup();
   spin();
-  for (uint16_t i = 0; i < 250; i++)
+  for (uint16_t i = 0; i < 400; i++)
   {
     qtr.calibrate();
   }
@@ -112,6 +112,14 @@ void loop() {
   // Step 1: Read QTR sensors
   position = qtr.readLineBlack(sensorValues); // 0 for sensor 0, 1000 for sensor 1, 2000 for sensor 2 etc.
   LineType lineType = detectLineType(sensorValues, LINE_THRESHOLD);
+
+  // Print sensor values for debugging
+  // if(lineType == 1 || lineType == 2 || lineType == 3) {
+  //   Serial.println("Sensor values:");
+  //   for(int i = 0; i < SensorCount; i++) {
+  //     Serial.println(sensorValues[i]);
+  //   }
+  // }
 
   int distanceFront = sonarFront.ping_cm();
   int distanceRight = sonarRight.ping_cm();
@@ -144,7 +152,7 @@ void loop() {
   // Serial.println(distanceRight);
   // Serial.print("Left: ");
   // Serial.println(distanceLeft);
-  // }
+  // //}
 
   
    if (rescuedCylinders == 3) {
@@ -159,7 +167,8 @@ void loop() {
         break;
 
       case LEFT_TURN:
-        if(distanceRight > 30){
+        Serial.println("LEFT_TURN");
+        if(distanceRight > 20){
           break;
         }
         if(distanceFront > 30 || distanceFront == 0){
@@ -171,7 +180,8 @@ void loop() {
         break;
 
       case RIGHT_TURN:
-        if(distanceLeft > 30){
+        Serial.println("RIGHT_TURN");
+        if(distanceLeft > 20){
           break;
         }
         if(distanceFront > 30 || distanceFront == 0){
@@ -243,7 +253,7 @@ void followLine(uint16_t position) {
 }
 
 void handleIntersection() {
-  Serial.println(movements[turnNR]);
+  Serial.println(turnNR);
   switch(movements[turnNR]){
     case FORWARD:
       moveForwardIntersection();
