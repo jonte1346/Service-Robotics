@@ -28,7 +28,7 @@ int distanceLeft = 0;
 int error = 0;
 
 int rescuedCylinders = 0;
-int turnNR = 0; //6 for three way blind
+int turnNR = 6; //6 for three way blind
 uint16_t position;
 
 const uint8_t SensorCount = 6;
@@ -107,6 +107,12 @@ void loop() {
   distanceFront = sonarFront.ping_cm();
   distanceRight = sonarRight.ping_cm();
   distanceLeft = sonarLeft.ping_cm();
+
+  if (turnNR >= 26 && lineType == NONE) {
+    stopMotors();
+    while (true) {
+    }
+  }
   
   // Step 3: Handle Line Type
   switch (lineType) {
@@ -116,9 +122,10 @@ void loop() {
 
     case LEFT_TURN:
       Serial.println("LEFT_TURN");
-      if(distanceRight > 20){
+      if (distanceRight > 20) {
         break;
       }
+
       if(distanceFront > 40){
         int averageDistanceFront = 0;
         for (int i = 0; i < 3; i++) {
@@ -164,6 +171,9 @@ void loop() {
         handleNoLine();
         break;
     }
+
+    
+
 }
 
 
@@ -283,8 +293,10 @@ void handleNoLine(){//int distanceFront, int distanceRight, int distanceLeft){
       for (int i = 0; i < 3; i++) {
         followLine(position);
       }
-      turnNR++;  
       break;
+  }
+  if(turnNR > 5){
+    turnNR++;
   }
 }
 
@@ -293,7 +305,7 @@ void delayOrLine(uint16_t time){
   LineType line = NONE;
 
   while (millis() < (timer_0 + time) && line != STRAIGHT ){  
-  //position = qtr.readLineBlack(sensorValues); // 0 for sensor 0, 1000 for sensor 1, 2000 for sensor 2 etc.
+  //position = qtr.readLineBlafck(sensorValues); // 0 for sensor 0, 1000 for sensor 1, 2000 for sensor 2 etc.
   line = detectLineType(sensorValues, LINE_THRESHOLD);
   delay(50);
   }
@@ -365,14 +377,14 @@ void moveForwardBlindLong() {
 }
 
 void turnLeftBlind1() {
-  Serial.println("turnLeftBlind1");
+  Serial.println("turnLeftBlind");
   motorLeft.setSpeed(-100);
   motorRight.setSpeed(100);
   delay(800);
 }
 
 void turnLeftBlind2() {
-  Serial.println("turnLeftBlind2");
+  Serial.println("turnLeftBlind");
   motorLeft.setSpeed(-100);
   motorRight.setSpeed(100);
   delay(750);
@@ -384,4 +396,3 @@ void turnRightBlind() {
   motorRight.setSpeed(-100);
   delay(800);
 }
-
