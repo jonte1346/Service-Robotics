@@ -70,7 +70,7 @@ void setup() {
   pinMode(buttonPin, INPUT_PULLUP);
   int buttonState = digitalRead(buttonPin);
   while(buttonState != LOW){
-    Serial.println("WAIT FOR CALIBRATION");
+    //seral.println("WAIT FOR CALIBRATION");
     buttonState = digitalRead(buttonPin);
   }
 
@@ -92,11 +92,11 @@ void setup() {
   digitalWrite(LED_BUILTIN, LOW); // turn off Arduino's LED to indicate we are through with calibration
 
   Serial.begin(9600);
-  Serial.println("Robot Initialized");
+  //seral.println("Robot Initialized");
   pinMode(buttonPin, INPUT_PULLUP);
   int loopButtonState = digitalRead(buttonPin);
   while(loopButtonState != LOW){
-    Serial.println(loopButtonState);
+    //seral.println(loopButtonState);
     loopButtonState = digitalRead(buttonPin);
   }
 }
@@ -116,12 +116,30 @@ void loop() {
   // distanceFront = sonarFront.ping_cm();
   // distanceRight = sonarRight.ping_cm();
   // distanceLeft = sonarLeft.ping_cm();
-  if(temp == 5){
+  // if(temp == 5){
   measureFront();
   measureLeft();
   measureRight();
-  temp = 0;
-  }
+
+  int fAvg = calcAvgFront();
+  int lAvg = calcAvgLeft();
+  int rAvg = calcAvgRight();
+  
+
+  // Now print all at once:
+  Serial.print(fAvg);
+  Serial.print("\t");
+  Serial.print(lAvg);
+  Serial.print("\t");
+  Serial.println(rAvg);
+  Serial.print(distanceFrontAvg[i_front]);
+  Serial.print("\t");
+  Serial.print(distanceLeftAvg[i_left]);
+  Serial.print("\t");
+  Serial.print(distanceRightAvg[i_right]);
+  Serial.print("\t");
+  // temp = 0;
+  // }
   temp++;
    if (rescuedCylinders == 3) {
    //Exit maze condition
@@ -134,7 +152,7 @@ void loop() {
       break;
 
     case LEFT_TURN:
-      Serial.println("LEFT_TURN");
+      //seral.println("LEFT_TURN");
       distanceRight = calcAvgRight();
       if(distanceRight > 20){
         break;
@@ -149,7 +167,7 @@ void loop() {
         // }
         // distanceFront = calcAvgFront();
         if (distanceFront > 40) {
-          Serial.println("INTERSECTION");
+          //seral.println("INTERSECTION");
           handleIntersection();
           break;
         }
@@ -158,7 +176,7 @@ void loop() {
       break;
 
       case RIGHT_TURN:
-        Serial.println("RIGHT_TURN");
+        //seral.println("RIGHT_TURN");
         distanceLeft = calcAvgLeft();
         if(distanceLeft > 20){
           break;
@@ -173,7 +191,7 @@ void loop() {
           // }
           // distanceFront = calcAvgFront();
           if (distanceFront > 40) {
-            Serial.println("INTERSECTION");
+            //seral.println("INTERSECTION");
             handleIntersection();
             break;
           }
@@ -182,7 +200,7 @@ void loop() {
         break;
 
       case INTERSECTION:
-        Serial.println("INTERSECTION");
+        //seral.println("INTERSECTION");
         handleIntersection(); 
         break;
 
@@ -242,7 +260,7 @@ void followLine(uint16_t position) {
 }
 
 void handleIntersection() {
-  Serial.println(turnNR);
+  //seral.println(turnNR);
   switch(movements[turnNR]){
     case FORWARD:
       moveForwardIntersection();
@@ -271,8 +289,8 @@ void rescueCylinder() {
   stopMotors();
   delay(100);
   rescuedCylinders++;
-  Serial.print("Cylinder rescued! Total rescued: ");
-  Serial.println(rescuedCylinders);
+  //seral.print("Cylinder rescued! Total rescued: ");
+  //seral.println(rescuedCylinders);
   gripAndRelease();
 }
 
@@ -292,7 +310,7 @@ void handleNoLine(){//int distanceFront, int distanceRight, int distanceLeft){
   distanceLeft = calcAvgLeft();
   if(distanceFront < 30 && distanceRight < 30 && distanceLeft < 30){
     turnAround();
-      Serial.println("turn around ");
+      //seral.println("turn around ");
     return;
   }
   
@@ -349,7 +367,7 @@ void delayOrLine(uint16_t time){
 }
 
 void moveForwardBlindShort() {
-  Serial.println("moveForwardBlindShort");
+  //seral.println("moveForwardBlindShort");
   motorLeft.setSpeed(100);
   motorRight.setSpeed(100);
   delayOrLine(1000);
@@ -358,106 +376,100 @@ void moveForwardBlindShort() {
 
 // Movement functions
 void moveForward() {
-  Serial.println("moveForward");
+  //seral.println("moveForward");
   motorLeft.setSpeed(150);
   motorRight.setSpeed(150);
 }
 
 void moveForwardIntersection() {
-  Serial.println("moveForwardIntersection");
+  //seral.println("moveForwardIntersection");
   motorLeft.setSpeed(150);
   motorRight.setSpeed(150);
   delay(100);
 }
 
 void spin(){
-  Serial.println("spin");
+  //seral.println("spin");
   motorLeft.setSpeed(-100);
   motorRight.setSpeed(100);
 }
 void turnLeft() {
-  Serial.println("turnLeft");
+  //seral.println("turnLeft");
   motorLeft.setSpeed(-100);
   motorRight.setSpeed(100);
   delayOrLine(500);
 }
 void turnRight() {
-  Serial.println("turnRight");
+  //seral.println("turnRight");
   motorLeft.setSpeed(100);
   motorRight.setSpeed(-100);
   delayOrLine(500);
 }
 void turnAround() {
-  Serial.println("Turn Around");
+  //seral.println("Turn Around");
   motorLeft.setSpeed(100);
   motorRight.setSpeed(-100);
   delayOrLine(1700);
 }
 
 void stopMotors() {
-  Serial.println("stopMotor");
+  //seral.println("stopMotor");
   motorLeft.setSpeed(0);
   motorRight.setSpeed(0);
 }
 
 void moveForwardBlind() {
-  Serial.println("moveForwardBlind");
+  //seral.println("moveForwardBlind");
   motorLeft.setSpeed(100);
   motorRight.setSpeed(100);
   delay(1400);
 }
 void moveForwardBlindLong() {
-  Serial.println("moveForwardBlindLong");
+  //seral.println("moveForwardBlindLong");
   motorLeft.setSpeed(100);
   motorRight.setSpeed(100);
   delay(1600);
 }
 
 void turnLeftBlind() {
-  Serial.println("turnLeftBlind");
+  //seral.println("turnLeftBlind");
   motorLeft.setSpeed(-100);
   motorRight.setSpeed(100);
   delay(800);
 }
 
 void turnRightBlind() {
-  Serial.println("turnRightBlind");
+  //seral.println("turnRightBlind");
   motorLeft.setSpeed(100);
   motorRight.setSpeed(-100);
   delay(800);
 }
 
 void measureFront(){
-  distanceFrontAvg[i_front] = sonarFront.ping_cm(); 
-  // Serial.println("Front reading: " );
-  // Serial.print(distanceFrontAvg[i_front]);
 
   i_front++;
   if (i_front == NUM_MEASUREMENTS){
     i_front = 0;
   }
+  distanceFrontAvg[i_front] = sonarFront.ping_cm(); 
 }
 
 void measureLeft(){
-  distanceLeftAvg[i_left] = sonarLeft.ping_cm(); 
-  // Serial.println("Left reading: " );
-  // Serial.print(distanceFrontAvg[i_left]);
-
   i_left++;
   if (i_left == NUM_MEASUREMENTS){
     i_left = 0;
   }
+  distanceLeftAvg[i_left] = sonarLeft.ping_cm(); 
 }
 
 void measureRight(){
-  distanceRightAvg[i_right] = sonarRight.ping_cm(); 
-  // Serial.println("Right reading: " );
-  // Serial.print(distanceRightAvg[i_right]);
+
 
   i_right++;
   if (i_right == NUM_MEASUREMENTS){
     i_right = 0;
   }
+  distanceRightAvg[i_right] = sonarRight.ping_cm(); 
 }
 
 
@@ -490,8 +502,7 @@ int calcAvgFront(){
   // Calculate the average of the median 3 values
   int sum = medianValues[0] + medianValues[1] + medianValues[2];
   int average = sum / 3;
-  Serial.print("Average Front: ");
-  Serial.println(average);
+
   return average;
 }
 
@@ -524,8 +535,7 @@ int calcAvgLeft(){
   // Calculate the average of the median 3 values
   int sum = medianValues[0] + medianValues[1] + medianValues[2];
   int average = sum / 3;
-  Serial.print("Average Left: ");
-  Serial.println(average);
+
   return average;
 }
 
@@ -558,8 +568,7 @@ int calcAvgRight(){
   // Calculate the average of the median 3 values
   int sum = medianValues[0] + medianValues[1] + medianValues[2];
   int average = sum / 3;
-  Serial.print("Average Right: ");
-  Serial.println(average);
+
   return average;
 }
 
