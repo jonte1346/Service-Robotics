@@ -100,18 +100,13 @@ void loop() {
     delay(100);
   }
 
-<<<<<<< HEAD
   // Step 2: Read QTR sensors
-=======
-  // Step 1: Read QTR sensors
->>>>>>> 6ecd14758811f3b19f6a2f2d97d34cad63a67b24
   position = qtr.readLineBlack(sensorValues); // 0 for sensor 0, 1000 for sensor 1, 2000 for sensor 2 etc.
   LineType lineType = detectLineType(sensorValues, LINE_THRESHOLD);
 
   distanceFront = sonarFront.ping_cm();
   distanceRight = sonarRight.ping_cm();
   distanceLeft = sonarLeft.ping_cm();
-<<<<<<< HEAD
 
   if (turnNR >= 26 && lineType == NONE) {
     stopMotors();
@@ -119,34 +114,17 @@ void loop() {
     }
   }
   
-=======
-  
-   if (rescuedCylinders == 3) {
-   //Exit maze condition
-   }
-  
->>>>>>> 6ecd14758811f3b19f6a2f2d97d34cad63a67b24
   // Step 3: Handle Line Type
   switch (lineType) {
     case STRAIGHT:
       followLine(position); // Continue line-following
       break;
-<<<<<<< HEAD
-
-    case LEFT_TURN:
-      Serial.println("LEFT_TURN");
-      if (distanceRight > 20) {
-        break;
-      }
-
-=======
 
     case LEFT_TURN:
       Serial.println("LEFT_TURN");
       if(distanceRight > 20){
         break;
       }
->>>>>>> 6ecd14758811f3b19f6a2f2d97d34cad63a67b24
       if(distanceFront > 40){
         int averageDistanceFront = 0;
         for (int i = 0; i < 3; i++) {
@@ -192,9 +170,6 @@ void loop() {
         handleNoLine();
         break;
     }
-
-    
-
 }
 
 
@@ -337,10 +312,6 @@ void moveForwardBlindShort() {
   motorLeft.setSpeed(100);
   motorRight.setSpeed(100);
   delayOrLine(1000);
-<<<<<<< HEAD
-=======
-  //delay(1000);
->>>>>>> 6ecd14758811f3b19f6a2f2d97d34cad63a67b24
 }
 
 // Movement functions
@@ -366,21 +337,13 @@ void turnLeft() {
   Serial.println("turnLeft");
   motorLeft.setSpeed(-100);
   motorRight.setSpeed(100);
-<<<<<<< HEAD
   delay(500);
-=======
-  delayOrLine(500);
->>>>>>> 6ecd14758811f3b19f6a2f2d97d34cad63a67b24
 }
 void turnRight() {
   Serial.println("turnRight");
   motorLeft.setSpeed(100);
   motorRight.setSpeed(-100);
-<<<<<<< HEAD
   delay(500);
-=======
-  delayOrLine(500);
->>>>>>> 6ecd14758811f3b19f6a2f2d97d34cad63a67b24
 }
 void turnAround() {
   Serial.println("Turn Around");
@@ -399,14 +362,9 @@ void moveForwardBlind() {
   Serial.println("moveForwardBlind");
   motorLeft.setSpeed(100);
   motorRight.setSpeed(100);
-<<<<<<< HEAD
   delayOrLine(1400);
 }
 
-=======
-  delay(1400);
-}
->>>>>>> 6ecd14758811f3b19f6a2f2d97d34cad63a67b24
 void moveForwardBlindLong() {
   Serial.println("moveForwardBlindLong");
   motorLeft.setSpeed(100);
@@ -414,35 +372,24 @@ void moveForwardBlindLong() {
   delay(1600);
 }
 
-<<<<<<< HEAD
 void turnLeftBlind1() {
-=======
-void turnLeftBlind() {
->>>>>>> 6ecd14758811f3b19f6a2f2d97d34cad63a67b24
-  Serial.println("turnLeftBlind");
+  Serial.println("turnLeftBlind1");
   motorLeft.setSpeed(-100);
   motorRight.setSpeed(100);
   delay(800);
 }
 
-<<<<<<< HEAD
 void turnLeftBlind2() {
-  Serial.println("turnLeftBlind");
+  Serial.println("turnLeftBlind2");
   motorLeft.setSpeed(-100);
   motorRight.setSpeed(100);
   delay(750);
 }
 
-=======
->>>>>>> 6ecd14758811f3b19f6a2f2d97d34cad63a67b24
 void turnRightBlind() {
   Serial.println("turnRightBlind");
   motorLeft.setSpeed(100);
   motorRight.setSpeed(-100);
   delay(800);
-<<<<<<< HEAD
-}
-=======
 }
 
->>>>>>> 6ecd14758811f3b19f6a2f2d97d34cad63a67b24
