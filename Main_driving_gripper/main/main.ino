@@ -1,12 +1,9 @@
 #include <NewPing.h>
 #include "CytronMotorDriver.h"
-//#include <ArduinoSTL.h> // Include the ArduinoSTL library
-//#include <utility>      // Include utility header for std::pair
 #include <QTRSensors.h>
 #include <Servo.h>
 
-
-// Distance sensor pins
+// Distance PINS
 #define FRONT_TRIGGER_PIN 13
 #define RIGHT_TRIGGER_PIN 12
 #define LEFT_TRIGGER_PIN 4
@@ -15,16 +12,24 @@
 #define LEFT_ECHO_PIN 2
 #define MAX_DISTANCE 200
 
+#define MOTOR1A 3
+#define MOTOR1B 5
+#define MOTOR2A 11
+#define MOTOR2B 6
+
+#define buttonPin 13
+
 int distanceFront = 0;
 int distanceRight = 0;
 int distanceLeft = 0;
 
-QTRSensors qtr;
+// int distanceFrontAvg 
 
-uint16_t count = 0;
 int error = 0;
 
-const int buttonPin = 13;
+int rescuedCylinders = 0;
+int turnNR = 0; //6 for three way blind
+uint16_t position;
 
 const uint8_t SensorCount = 6;
 uint16_t sensorValues[SensorCount];
@@ -33,43 +38,26 @@ uint16_t sensorValues[SensorCount];
 const uint16_t LINE_THRESHOLD = 650; // Adjust based on calibration
 const uint16_t CENTER_POSITION = 2500;
 
-//States
-enum States {INIT, GET_NEXT_GOAL, MOVE_TO_GOAL, LOOK_FOR_PERSON, PICKUP_PERSON, MOVE_TO_BASE, DONE};
-
 // Orientation
 enum Orientation {FORWARD = 0, LEFT = 1, RIGHT = 2, BACKWARD = 3};
+enum LineType { STRAIGHT, LEFT_TURN, RIGHT_TURN, INTERSECTION, NONE};
 
-enum LineType { STRAIGHT, LEFT_TURN, RIGHT_TURN, INTERSECTION, NONE };
-uint16_t position;
-
-// Define constants for edge states
-#define NULL_EDGE -1  // No edge in this direction
-#define DEAD_END -2   // Dead end in this direction
-#define START -3
-
-// Array to hold all nodes in the maze
-#define NUM_NODES 11  // Total number of intersections in the maze
+QTRSensors qtr;
 
 // Motor configuration
-CytronMD motorLeft(PWM_PWM, 3, 5);
-CytronMD motorRight(PWM_PWM, 11, 6);
+CytronMD motorLeft(PWM_PWM, MOTOR1A, MOTOR1B);
+CytronMD motorRight(PWM_PWM, MOTOR2A, MOTOR2B);
 
 // Ultrasonic sensors
 NewPing sonarFront(FRONT_TRIGGER_PIN, FRONT_ECHO_PIN, MAX_DISTANCE);
 NewPing sonarRight(RIGHT_TRIGGER_PIN, RIGHT_ECHO_PIN, MAX_DISTANCE);
 NewPing sonarLeft(LEFT_TRIGGER_PIN, LEFT_ECHO_PIN, MAX_DISTANCE);
 
-
-int rescuedCylinders = 0;
-int turnNR = 0;
-
-
 // Arrays for turn indices 1 = left 2 = right 3 = straigth forward
 Orientation movements[] = {LEFT, LEFT, LEFT, LEFT, FORWARD, FORWARD, LEFT, LEFT, LEFT, FORWARD, LEFT, LEFT, LEFT, RIGHT, LEFT, LEFT, LEFT, LEFT, FORWARD, FORWARD, RIGHT, FORWARD, RIGHT, BACKWARD, LEFT, RIGHT}; 
 
 // Setup
 void setup() {
-
   pinMode(buttonPin, INPUT_PULLUP);
   int buttonState = digitalRead(buttonPin);
   while(buttonState != LOW){
@@ -94,7 +82,6 @@ void setup() {
   stopMotors();
   digitalWrite(LED_BUILTIN, LOW); // turn off Arduino's LED to indicate we are through with calibration
 
-
   Serial.begin(9600);
   Serial.println("Robot Initialized");
   pinMode(buttonPin, INPUT_PULLUP);
@@ -103,99 +90,63 @@ void setup() {
     Serial.println(loopButtonState);
     loopButtonState = digitalRead(buttonPin);
   }
-
 }
 
 // Main loop
 void loop() {
-  // Step 2: Cylinder detection and rescue
+  // Step 1: Cylinder detection and rescue
   if (detectCylinder()) { // && lineType != NONE
     rescueCylinder();
     delay(100);
   }
-  // Step 1: Read QTR sensors
+
+  // Step 2: Read QTR sensors
   position = qtr.readLineBlack(sensorValues); // 0 for sensor 0, 1000 for sensor 1, 2000 for sensor 2 etc.
   LineType lineType = detectLineType(sensorValues, LINE_THRESHOLD);
-
-  // Print sensor values for debugging
-  // if(lineType == 1 || lineType == 2 || lineType == 3) {
-  //   Serial.println("Sensor values:");
-  //   for(int i = 0; i < SensorCount; i++) {
-  //     Serial.println(sensorValues[i]);
-  //   }
-  // }
 
   distanceFront = sonarFront.ping_cm();
   distanceRight = sonarRight.ping_cm();
   distanceLeft = sonarLeft.ping_cm();
 
-  // int distanceFront = sonarFront.ping_cm();
-  // delay(100);
-  // int distanceRight = sonarRight.ping_cm();
-  // delay(100);
-  // int distanceLeft = sonarLeft.ping_cm();
-  // Serial.print("QTR Position: ");
-  // Serial.println(position);
-  // Serial.print("Sensor values: ");
-  // for (uint8_t i = 0; i < SensorCount; i++)
-  // {
-  //   Serial.print(sensorValues[i]);
-  //   Serial.print('\t');
-  // }
-  // while (true){
-  // int distanceFront = sonarFront.ping_cm();
-  // delay(300);
-  // int distanceRight = sonarRight.ping_cm();
-  // delay(300);
-  // int distanceLeft = sonarLeft.ping_cm();
-  // delay(300);
-
-  // Serial.print("\nDistances  \nFront: ");
-  // Serial.println(distanceFront);
-  // Serial.print("Right: ");
-  // Serial.println(distanceRight);
-  // Serial.print("Left: ");
-  // Serial.println(distanceLeft);
-  // //}
-
+  if (turnNR >= 26 && lineType == NONE) {
+    stopMotors();
+    while (true) {
+    }
+  }
   
-   if (rescuedCylinders == 3) {
-     exitMaze();  // Switch to A* for exit
-   }
+  // Step 3: Handle Line Type
+  switch (lineType) {
+    case STRAIGHT:
+      followLine(position); // Continue line-following
+      break;
 
-  
-    // // Step 3: Handle Line Type
-    switch (lineType) {
-      case STRAIGHT:
-        followLine(position); // Continue line-following
+    case LEFT_TURN:
+      Serial.println("LEFT_TURN");
+      if (distanceRight > 20) {
         break;
+      }
 
-      case LEFT_TURN:
-        Serial.println("LEFT_TURN");
-        if(distanceRight > 20){
+      if(distanceFront > 40){
+        int averageDistanceFront = 0;
+        for (int i = 0; i < 3; i++) {
+          distanceFront = sonarFront.ping_cm();
+          averageDistanceFront += distanceFront;
+        }
+        if (averageDistanceFront/3 > 40) {
+          Serial.println("INTERSECTION");
+          handleIntersection();
           break;
         }
-        if(distanceFront > 40){
-          int averageDistanceFront = 0;
-          for (int i = 0; i < 3; i++) {
-            distanceFront = sonarFront.ping_cm();
-            averageDistanceFront += distanceFront;
-          }
-          if (averageDistanceFront/3 > 40) {
-            Serial.println("INTERSECTION");
-            handleIntersection();
-            break;
-          }
-        }
-        turnLeft(); // Perform left turn
-        break;
+      }
+      turnLeft(); // Perform left turn
+      break;
 
       case RIGHT_TURN:
         Serial.println("RIGHT_TURN");
-        Serial.println(distanceFront);
-        if(distanceLeft > 20){
+        if (distanceLeft > 20) {
           break;
         }
+
         if(distanceFront > 40){
           int averageDistanceFront = 0;
           for (int i = 0; i < 3; i++) {
@@ -220,6 +171,8 @@ void loop() {
         handleNoLine();
         break;
     }
+
+    
 
 }
 
@@ -330,27 +283,16 @@ void handleNoLine(){//int distanceFront, int distanceRight, int distanceLeft){
     case LEFT:
       if (turnNR < 7) {
         moveForwardBlindLong();
+        turnLeftBlind1();
       } else if (turnNR > 8) {
         moveForwardBlind();
+        turnLeftBlind2();
       }
-      turnLeftBlind();
       moveForwardBlindShort();
       position = qtr.readLineBlack(sensorValues); // 0 for sensor 0, 1000 for sensor 1, 2000 for sensor 2 etc
       for (int i = 0; i < 3; i++) {
         followLine(position);
       }
-      break;
-    case RIGHT:
-      moveForwardBlind();
-      turnRightBlind();
-      moveForwardBlindShort();
-      position = qtr.readLineBlack(sensorValues); // 0 for sensor 0, 1000 for sensor 1, 2000 for sensor 2 etc.
-      followLine(position);
-      break;
-    case FORWARD:
-      moveForwardBlind();
-      position = qtr.readLineBlack(sensorValues); // 0 for sensor 0, 1000 for sensor 1, 2000 for sensor 2 etc.
-      followLine(position);
       break;
   }
   if(turnNR > 5){
@@ -358,11 +300,99 @@ void handleNoLine(){//int distanceFront, int distanceRight, int distanceLeft){
   }
 }
 
-// void backtrack(std::pair<int, int> previousNode) {
-//   // Logic to navigate back to the previous node (e.g., reverse movements)
-// }
+void delayOrLine(uint16_t time){
+  long timer_0 = millis();
+  LineType line = NONE;
 
-void exitMaze() {
-  // Implement A* for shortest path to the exit
-  
+  while (millis() < (timer_0 + time) && line != STRAIGHT ){  
+  //position = qtr.readLineBlack(sensorValues); // 0 for sensor 0, 1000 for sensor 1, 2000 for sensor 2 etc.
+  line = detectLineType(sensorValues, LINE_THRESHOLD);
+  delay(50);
+  }
+}
+
+void moveForwardBlindShort() {
+  Serial.println("moveForwardBlindShort");
+  motorLeft.setSpeed(100);
+  motorRight.setSpeed(100);
+  delayOrLine(1000);
+}
+
+// Movement functions
+void moveForward() {
+  Serial.println("moveForward");
+  motorLeft.setSpeed(150);
+  motorRight.setSpeed(150);
+}
+
+void moveForwardIntersection() {
+  Serial.println("moveForwardIntersection");
+  motorLeft.setSpeed(150);
+  motorRight.setSpeed(150);
+  delay(100);
+}
+
+void spin(){
+  Serial.println("spin");
+  motorLeft.setSpeed(-100);
+  motorRight.setSpeed(100);
+}
+void turnLeft() {
+  Serial.println("turnLeft");
+  motorLeft.setSpeed(-100);
+  motorRight.setSpeed(100);
+  delay(500);
+}
+void turnRight() {
+  Serial.println("turnRight");
+  motorLeft.setSpeed(100);
+  motorRight.setSpeed(-100);
+  delay(500);
+}
+void turnAround() {
+  Serial.println("Turn Around");
+  motorLeft.setSpeed(100);
+  motorRight.setSpeed(-100);
+  delayOrLine(1700);
+}
+
+void stopMotors() {
+  Serial.println("stopMotor");
+  motorLeft.setSpeed(0);
+  motorRight.setSpeed(0);
+}
+
+void moveForwardBlind() {
+  Serial.println("moveForwardBlind");
+  motorLeft.setSpeed(100);
+  motorRight.setSpeed(100);
+  delayOrLine(1400);
+}
+
+void moveForwardBlindLong() {
+  Serial.println("moveForwardBlindLong");
+  motorLeft.setSpeed(100);
+  motorRight.setSpeed(100);
+  delay(1600);
+}
+
+void turnLeftBlind1() {
+  Serial.println("turnLeftBlind");
+  motorLeft.setSpeed(-100);
+  motorRight.setSpeed(100);
+  delay(800);
+}
+
+void turnLeftBlind2() {
+  Serial.println("turnLeftBlind");
+  motorLeft.setSpeed(-100);
+  motorRight.setSpeed(100);
+  delay(750);
+}
+
+void turnRightBlind() {
+  Serial.println("turnRightBlind");
+  motorLeft.setSpeed(100);
+  motorRight.setSpeed(-100);
+  delay(800);
 }
