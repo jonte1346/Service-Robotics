@@ -34,10 +34,10 @@ uint8_t temp = 0;
 
 
 
-int error = 0;
+int error = 0;  
 
 int rescuedCylinders = 0;
-int turnNR = 6; //6 for three way blind
+int turnNR = 0; //6 for three way blind
 uint16_t position;
 
 const uint8_t SensorCount = 6;
@@ -342,6 +342,7 @@ void delayOrLine(uint16_t time){
 
   while (millis() < (timer_0 + time) && line != STRAIGHT ){  
   //position = qtr.readLineBlack(sensorValues); // 0 for sensor 0, 1000 for sensor 1, 2000 for sensor 2 etc.
+  position = qtr.readLineBlack(sensorValues);
   line = detectLineType(sensorValues, LINE_THRESHOLD);
   delay(50);
   }
@@ -449,9 +450,9 @@ void measureLeft(){
 }
 
 void measureRight(){
-  distanceRightAvg[i_right] = sonarFront.ping_cm(); 
-  // Serial.println("Front reading: " );
-  // Serial.print(distanceFrontAvg[i_right]);
+  distanceRightAvg[i_right] = sonarRight.ping_cm(); 
+  // Serial.println("Right reading: " );
+  // Serial.print(distanceRightAvg[i_right]);
 
   i_right++;
   if (i_right == NUM_MEASUREMENTS){
