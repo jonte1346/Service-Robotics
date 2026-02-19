@@ -1,5 +1,5 @@
 # **Autonomous Search and Rescue Robot**
-A full report on the project can be found above at <em>Report service robotic.pdf</em>
+[![PDF Preview](./FrontPage.png)](./Report_service_robotic.pdf)
 ## **Project Overview**
 
 This project involved developing a search and rescue robot capable of finding and carrying an injured person out of a building. This scenario was simulated where a small-scale autonomous robot, with appropriate sensors, had to find three ‘people’ (represented by small wooden cylinders) in a maze, and then carry them out of the maze.
